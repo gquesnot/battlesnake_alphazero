@@ -1,6 +1,7 @@
 use battlesnake_game_types::types::{FoodGettableGame, HeadGettableGame, HealthGettableGame, Move, ReasonableMovesGame, SnakeBodyGettableGame, SnakeId, VictorDeterminableGame};
 use battlesnake_game_types::wire_representation::Position;
 use itertools::Itertools;
+use ndarray::Array2;
 use tch::{IndexOp, Kind, Tensor};
 
 use crate::alpha_zero_model::get_base_device;
@@ -79,35 +80,36 @@ impl CanonicalBoard {
     }
 
     pub fn to_tensor(&self) -> Tensor {
-        // 1=>head and 2=>body for snake1, 3=>head and 4=>body for snake2, 5 for food
-        let tensor = Tensor::zeros([11, 11], (Kind::Float, get_base_device()));
+        let (board_size_x, board_size_y) = (11, 11); // Assuming a fixed board size, adjust if necessary
+        let mut array_board: Array2<f32> = Array2::zeros((board_size_x, board_size_y));
         let (self_head, self_body, other_head, other_body, foods) = self.get_info_for_repr();
 
         if let Some(self_head) = self_head {
-            let _ = tensor.i((self_head.x as i64, self_head.y as i64)).f_fill_(1.0).expect("filling tensor");
+            array_board[(self_head.x as usize, self_head.y as usize)] = 1.0;
         }
         if let Some(self_body) = self_body {
             for body in self_body {
-                let _ = tensor.i((body.x as i64, body.y as i64)).f_fill_(2.0).expect("filling tensor");
+                array_board[(body.x as usize, body.y as usize)] = 2.0;
             }
         }
         if let Some(other_head) = other_head {
-            let _ = tensor.i((other_head.x as i64, other_head.y as i64)).f_fill_(-1.0).expect("filling tensor");
+            array_board[(other_head.x as usize, other_head.y as usize)] = -1.0;
         }
         if let Some(other_body) = other_body {
             for body in other_body {
-                let _ = tensor.i((body.x as i64, body.y as i64)).f_fill_(-2.0).expect("filling tensor");
+                array_board[(body.x as usize, body.y as usize)] = -2.0;
             }
         }
         for food in foods {
-            let _ = tensor.i((food.x as i64, food.y as i64)).f_fill_(0.5).expect("filling tensor");
+            array_board[(food.x as usize, food.y as usize)] = 0.5;
         }
-        tensor
+
+        Tensor::try_from(array_board).expect("Failed to convert ndarray to Tensor")
     }
 
 
     pub fn reset_and_clone_as_current_player(&self) -> CanonicalBoard {
-        let mut new_board = self.clone();
+        let mut new_board = *self;
         if new_board.prev_action.is_some() {
             new_board.prev_action = None;
             new_board.first_player = -new_board.first_player;

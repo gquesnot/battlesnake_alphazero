@@ -1,9 +1,8 @@
 use std::fs::OpenOptions;
 
 use indicatif::ProgressStyle;
-use itertools::Itertools;
-use rand::prelude::SliceRandom;
-use tch::{Device, nn};
+use ndarray::{Array2, Array3};
+use tch::{Device, nn, Tensor};
 use tch::nn::{Adam, OptimizerConfig};
 
 use crate::canonical_board::CanonicalBoard;
@@ -47,32 +46,35 @@ impl AlphaZeroModel {
             .template("[{elapsed_precise}] [{bar:40.cyan/blue}] {pos:>7}/{len:7} {msg} ({eta})")
             .unwrap()
             .progress_chars("##-"));
-        let total_iterations = 2048;
+
+        let board_shape = (BATCH_SIZE, BOARD_SIZE as usize, BOARD_SIZE as usize);
+        let pi_shape = (BATCH_SIZE, 4);
+        let v_shape = (BATCH_SIZE, 1);
+
+        let total_iterations = samples.len() / MINI_BATCH;
         for _ in 0..EPOCHS {
-            for i in 0..MINI_BATCH {
-                let batch = samples.choose_multiple(&mut rand::thread_rng(), BATCH_SIZE).collect_vec();
-                let boards_tensors: Vec<tch::Tensor> = batch.iter().map(|(s, _, _)| {
-                    tch::Tensor::from_slice(&s.iter().flat_map(|&row| row.into_iter()).collect::<Vec<f32>>())
-                        .view([11, 11])
-                }).collect();
-                let mut boards = tch::Tensor::stack(&boards_tensors, 0);
+            for (i, sample) in samples.chunks(MINI_BATCH).enumerate() {
+                let boards_array: Array3<f32> = Array3::from_shape_vec(board_shape,
+                                                                       sample.iter()
+                                                                          .flat_map(|(s, _, _)| s.iter().flat_map(|row| row.iter().cloned()))
+                                                                          .collect()
+                ).expect("Error creating ndarray for boards");
 
-                let target_pis = batch.iter().flat_map(|(_, p, _)| p.iter().cloned()).collect::<Vec<f32>>();
-                let mut target_pis = tch::Tensor::from_slice(&target_pis).view((-1, 4));
-                // Flatten the target_pis to create a single-dimensional tensor
-                let target_vs = batch.iter().map(|(_, _, v)| *v).collect::<Vec<_>>();
-                let mut target_vs = tch::Tensor::from_slice(&target_vs);
-                if get_base_device().is_cuda() {
-                    boards = boards.contiguous().to_device(get_base_device());
-                    target_pis = target_pis.contiguous().to_device(get_base_device());
-                    target_vs = target_vs.contiguous().to_device(get_base_device());
-                }
+                let target_pis_array: Array2<f32> = Array2::from_shape_vec(pi_shape,
+                                                                           sample.iter()
+                                                                               .flat_map(|(_, p, _)| p.iter().cloned())
+                                                                               .collect()
+                ).expect("Error creating ndarray for target_pis");
 
-                //println!("Boards: {:?}", boards.size());
-                //println!("Target Pis: {:?}", target_pis.size());
-                //println!("Target Vs: {:?}", target_vs.size());
+                let target_vs_array: Array2<f32> = Array2::from_shape_vec(v_shape,
+                                                                          sample.iter()
+                                                                              .map(|(_, _, v)| *v)
+                                                                              .collect()
+                ).expect("Error creating ndarray for target_vs");
 
-
+                let boards = Tensor::try_from(boards_array).unwrap();
+                let target_pis = Tensor::try_from(target_pis_array).unwrap();
+                let target_vs = Tensor::try_from(target_vs_array).unwrap();
                 let (out_pi, out_v) = self.nnet.forward(&boards, true);
                 //println!("Out Pi: {:?}", out_pi.size());
                 //println!("Out V: {:?}", out_v.size());
@@ -86,7 +88,9 @@ impl AlphaZeroModel {
 
                 pi_losses.update(f32_l_pi, b_size);
                 v_losses.update(f32_l_v, b_size);
-                pb.set_message(format!("{}/{} pi_loss: {} v_loss: {}", i, total_iterations, pi_losses, v_losses));
+                if i % 100 == 0 {
+                    pb.set_message(format!("{}/{} pi_loss: {} v_loss: {}", i, total_iterations, pi_losses, v_losses));
+                }
 
                 optimizer.zero_grad();
                 total_loss.backward();

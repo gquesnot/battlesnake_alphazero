@@ -44,7 +44,7 @@ impl MCTS {
     pub fn get_action_prob(&mut self, state: &CanonicalBoard, temp: f32) -> [f32; 4] {
         let current_state = state.reset_and_clone_as_current_player();
         for _ in 0..self.args.num_mcts_sims {
-            self.search(current_state.clone());
+            self.search(current_state);
         }
         let s = current_state.to_hashmap_string();
         let mut counts: [usize; 4] = [0; 4];
@@ -60,7 +60,7 @@ impl MCTS {
             let best_action = best_actions.choose(&mut rand::thread_rng()).unwrap();
             let mut probabilities = [0.0; 4];
             probabilities[*best_action] = 1.0;
-            return probabilities;
+            probabilities
         } else {
             let mut counts_float: [f32; 4] = [0.0; 4];
             for (i, count) in counts_float.iter_mut().enumerate() {

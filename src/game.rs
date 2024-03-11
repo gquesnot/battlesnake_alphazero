@@ -166,7 +166,7 @@ impl BoardInit for Board {
 
 impl CanCanonical for Board {
     fn as_canonical(&self, player: i32) -> CanonicalBoard {
-        CanonicalBoard::new(self.clone(), player, None)
+        CanonicalBoard::new(*self, player, None)
     }
 }
 
