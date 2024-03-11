@@ -17,7 +17,7 @@ pub struct Args {
     #[arg(long, default_value_t = 1000)]
     pub num_iterations: i32,
 
-    #[arg(long, default_value_t = 10)]
+    #[arg(long, default_value_t = 100)]
     pub num_episodes: i32,
 
     #[arg(long, default_value_t = 200000)]
@@ -26,7 +26,7 @@ pub struct Args {
     #[arg(long, default_value_t = 15)]
     pub temp_threshold: i32,
 
-    #[arg(long, default_value_t = 0.6)]
+    #[arg(long, default_value_t = 0.55)]
     pub update_threshold: f32,
 
     #[arg(long, default_value_t = 25)]

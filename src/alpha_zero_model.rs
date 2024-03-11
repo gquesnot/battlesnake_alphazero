@@ -1,7 +1,8 @@
 use std::fs::OpenOptions;
 
 use indicatif::ProgressStyle;
-use ndarray::{Array2, Array3};
+use itertools::multiunzip;
+use ndarray::{arr1, arr2, arr3};
 use tch::{Device, nn, Tensor};
 use tch::nn::{Adam, OptimizerConfig};
 
@@ -47,34 +48,28 @@ impl AlphaZeroModel {
             .unwrap()
             .progress_chars("##-"));
 
-        let board_shape = (BATCH_SIZE, BOARD_SIZE as usize, BOARD_SIZE as usize);
-        let pi_shape = (BATCH_SIZE, 4);
-        let v_shape = (BATCH_SIZE, 1);
+        let total_iterations = samples.len() / BATCH_SIZE;
 
-        let total_iterations = samples.len() / MINI_BATCH;
+
         for _ in 0..EPOCHS {
-            for (i, sample) in samples.chunks(MINI_BATCH).enumerate() {
-                let boards_array: Array3<f32> = Array3::from_shape_vec(board_shape,
-                                                                       sample.iter()
-                                                                          .flat_map(|(s, _, _)| s.iter().flat_map(|row| row.iter().cloned()))
-                                                                          .collect()
-                ).expect("Error creating ndarray for boards");
+            for (i, sample) in samples.chunks(BATCH_SIZE).enumerate() {
+                let (s, pi, value): (Vec<[[f32; 11]; 11]>, Vec<[f32; 4]>, Vec<f32>) = multiunzip(sample.into_iter().map(
+                    |(s, p, v)| (s, p, v)
+                ));
 
-                let target_pis_array: Array2<f32> = Array2::from_shape_vec(pi_shape,
-                                                                           sample.iter()
-                                                                               .flat_map(|(_, p, _)| p.iter().cloned())
-                                                                               .collect()
-                ).expect("Error creating ndarray for target_pis");
+                let mut boards = Tensor::try_from(arr3(&s)).unwrap();
+                let mut target_pis = Tensor::try_from(arr2(&pi)).unwrap();
+                let mut target_vs = Tensor::try_from(arr1(&value)).unwrap();
+                if get_base_device().is_cuda() {
+                    boards = boards.to_device(get_base_device());
+                    target_pis = target_pis.to_device(get_base_device());
+                    target_vs = target_vs.to_device(get_base_device());
+                }
 
-                let target_vs_array: Array2<f32> = Array2::from_shape_vec(v_shape,
-                                                                          sample.iter()
-                                                                              .map(|(_, _, v)| *v)
-                                                                              .collect()
-                ).expect("Error creating ndarray for target_vs");
+                //println!("Boards: {:?}", boards.size());
+                //println!("Target Pi: {:?}", target_pis.size());
+                //println!("Target V: {:?}", target_vs.size());
 
-                let boards = Tensor::try_from(boards_array).unwrap();
-                let target_pis = Tensor::try_from(target_pis_array).unwrap();
-                let target_vs = Tensor::try_from(target_vs_array).unwrap();
                 let (out_pi, out_v) = self.nnet.forward(&boards, true);
                 //println!("Out Pi: {:?}", out_pi.size());
                 //println!("Out V: {:?}", out_v.size());
@@ -109,8 +104,7 @@ impl AlphaZeroModel {
         }
         tensor_board = tensor_board.view([1, BOARD_SIZE, BOARD_SIZE]);
         let (pi, v) = self.nnet.forward(&tensor_board, false);
-        let pi = pi.exp().to(get_base_device());
-        let v = v.to(get_base_device());
+        let pi = pi.exp();
         let policy = Vec::<f32>::try_from(pi.view(-1))
             .map_err(|e| format!("Failed to convert policy to Vec<f32>: {}", e))
             .expect("Expected a Vec<f32> value after squeeze_dim");

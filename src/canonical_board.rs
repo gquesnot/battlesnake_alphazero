@@ -2,9 +2,8 @@ use battlesnake_game_types::types::{FoodGettableGame, HeadGettableGame, HealthGe
 use battlesnake_game_types::wire_representation::Position;
 use itertools::Itertools;
 use ndarray::Array2;
-use tch::{IndexOp, Kind, Tensor};
+use tch::{Tensor};
 
-use crate::alpha_zero_model::get_base_device;
 use crate::config::BOARD_SIZE;
 use crate::game;
 use crate::game::{Board, MoveBattleSnake};
