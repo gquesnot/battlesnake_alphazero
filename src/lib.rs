@@ -17,7 +17,7 @@ pub struct Args {
     #[arg(long, default_value_t = 1000)]
     pub num_iterations: i32,
 
-    #[arg(long, default_value_t = 100)]
+    #[arg(long, default_value_t = 50)]
     pub num_episodes: i32,
 
     #[arg(long, default_value_t = 200000)]

@@ -25,7 +25,7 @@ harness = false
 
 
 [profile.release]
-lto = "fat"
+lto = true
 opt-level = 3
 codegen-units = 1
 rustflags = ["-C", "target-cpu=native"]

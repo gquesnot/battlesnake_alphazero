@@ -103,7 +103,7 @@ impl Coach {
             let mcts = MCTS::new(&self.model, self.args.clone());
 
             let mut arena = Arena::new(mcts, p_mcts);
-            let (p_wins, n_wins, draws) = arena.play_games(self.args.arena_compare);
+            let (n_wins, p_wins, draws) = arena.play_games(self.args.arena_compare);
             println!("NEW/PREV WINS : {} / {} ; DRAWS : {}", n_wins, p_wins, draws);
 
             if p_wins + n_wins == 0 || (n_wins as f32 / (p_wins + n_wins) as f32) < self.args.update_threshold {
@@ -128,7 +128,7 @@ impl Coach {
         if !examples_file.exists() {
             panic!("File not found: {}", examples_file.to_str().unwrap());
         } else {
-            let file = fs::File::open(examples_file)?;
+            let  file = fs::File::open(examples_file)?;
             self.examples_history = bincode::deserialize_from(&file).unwrap_or_else(|e| {
                 println!("Failed to load examples: {}", e);
                 Vec::new()

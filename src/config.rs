@@ -7,7 +7,7 @@ pub const EPS: f32 = 1e-8;
 
 
 pub const LEARNING_RATE: f64 = 0.001;
-pub const EPOCHS: usize = 10;
+pub const EPOCHS: usize = 5;
 pub const BATCH_SIZE: usize = 64;
 pub const MINI_BATCH: usize = 2048;
 

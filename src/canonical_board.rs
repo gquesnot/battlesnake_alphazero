@@ -1,7 +1,7 @@
 use battlesnake_game_types::types::{FoodGettableGame, HeadGettableGame, HealthGettableGame, Move, ReasonableMovesGame, SnakeBodyGettableGame, SnakeId, VictorDeterminableGame};
 use battlesnake_game_types::wire_representation::Position;
 use itertools::Itertools;
-use tch::{Kind, Tensor};
+use tch::{IndexOp, Kind, Tensor};
 
 use crate::alpha_zero_model::get_base_device;
 use crate::config::BOARD_SIZE;
@@ -80,47 +80,29 @@ impl CanonicalBoard {
 
     pub fn to_tensor(&self) -> Tensor {
         // 1=>head and 2=>body for snake1, 3=>head and 4=>body for snake2, 5 for food
-        let mut tensor = Tensor::zeros([11, 11], (Kind::Float, get_base_device()));
+        let tensor = Tensor::zeros([11, 11], (Kind::Float, get_base_device()));
         let (self_head, self_body, other_head, other_body, foods) = self.get_info_for_repr();
 
-        let mut x_indices: Vec<i64> = Vec::new();
-        let mut y_indices: Vec<i64> = Vec::new();
-        let mut values: Vec<f64> = Vec::new();
-
-        let add_updates = |points: Vec<Position>, value: f64, x_indices: &mut Vec<i64>, y_indices: &mut Vec<i64>, values: &mut Vec<f64>| {
-            for point in points {
-                x_indices.push(point.x as i64);
-                y_indices.push(point.y as i64);
-                values.push(value);
-            }
-        };
-
         if let Some(self_head) = self_head {
-            x_indices.push(self_head.x as i64);
-            y_indices.push(self_head.y as i64);
-            values.push(1.0);
+            let _ = tensor.i((self_head.x as i64, self_head.y as i64)).f_fill_(1.0).expect("filling tensor");
         }
-        if let Some(body) = self_body {
-            add_updates(body, 2.0, &mut x_indices, &mut y_indices, &mut values);
+        if let Some(self_body) = self_body {
+            for body in self_body {
+                let _ = tensor.i((body.x as i64, body.y as i64)).f_fill_(2.0).expect("filling tensor");
+            }
         }
-
         if let Some(other_head) = other_head {
-            x_indices.push(other_head.x as i64);
-            y_indices.push(other_head.y as i64);
-            values.push(-1.0);
+            let _ = tensor.i((other_head.x as i64, other_head.y as i64)).f_fill_(-1.0).expect("filling tensor");
         }
-        if let Some(body) = other_body {
-            add_updates(body, -2.0, &mut x_indices, &mut y_indices, &mut values);
+        if let Some(other_body) = other_body {
+            for body in other_body {
+                let _ = tensor.i((body.x as i64, body.y as i64)).f_fill_(-2.0).expect("filling tensor");
+            }
         }
-        add_updates(foods, 0.5, &mut x_indices, &mut y_indices, &mut values);
-
-        // Convert vectors to tensors
-        let x_indices_tensor = Tensor::from_slice(&x_indices);
-        let y_indices_tensor = Tensor::from_slice(&y_indices);
-        let values_tensor = Tensor::from_slice(&values).to_kind(Kind::Float).to(get_base_device());
-
-        // Perform batch update
-        tensor.index_put_(&[Some(y_indices_tensor), Some(x_indices_tensor)], &values_tensor, false)
+        for food in foods {
+            let _ = tensor.i((food.x as i64, food.y as i64)).f_fill_(0.5).expect("filling tensor");
+        }
+        tensor
     }
 
 

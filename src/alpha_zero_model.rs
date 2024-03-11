@@ -7,7 +7,7 @@ use tch::{Device, nn};
 use tch::nn::{Adam, OptimizerConfig};
 
 use crate::canonical_board::CanonicalBoard;
-use crate::config::{BATCH_SIZE, BOARD_SIZE, EPOCHS, LEARNING_RATE};
+use crate::config::{BATCH_SIZE, BOARD_SIZE, EPOCHS, LEARNING_RATE, MINI_BATCH};
 use crate::game::Sample;
 use crate::neural_network::NeuralNetwork;
 use crate::utils::AverageMeter;
@@ -44,12 +44,12 @@ impl AlphaZeroModel {
         let mut v_losses = AverageMeter::default();
         let pb = indicatif::ProgressBar::new(EPOCHS as u64);
         pb.set_style(ProgressStyle::default_bar()
-            .template("[{elapsed_precise}] [{bar:40.cyan/blue}] {pos:>7}/{len:7} {msg}")
+            .template("[{elapsed_precise}] [{bar:40.cyan/blue}] {pos:>7}/{len:7} {msg} ({eta})")
             .unwrap()
             .progress_chars("##-"));
-        let total_iterations = samples.len() / BATCH_SIZE;
+        let total_iterations = 2048;
         for _ in 0..EPOCHS {
-            for i in 0..total_iterations {
+            for i in 0..MINI_BATCH {
                 let batch = samples.choose_multiple(&mut rand::thread_rng(), BATCH_SIZE).collect_vec();
                 let boards_tensors: Vec<tch::Tensor> = batch.iter().map(|(s, _, _)| {
                     tch::Tensor::from_slice(&s.iter().flat_map(|&row| row.into_iter()).collect::<Vec<f32>>())
@@ -103,7 +103,7 @@ impl AlphaZeroModel {
         if get_base_device().is_cuda() {
             tensor_board = tensor_board.contiguous().to_device(get_base_device());
         }
-        tensor_board = tensor_board.view([1, BOARD_SIZE, BOARD_SIZE]).set_requires_grad(false);
+        tensor_board = tensor_board.view([1, BOARD_SIZE, BOARD_SIZE]);
         let (pi, v) = self.nnet.forward(&tensor_board, false);
         let pi = pi.exp().to(get_base_device());
         let v = v.to(get_base_device());
