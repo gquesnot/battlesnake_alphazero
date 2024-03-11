@@ -123,12 +123,12 @@ impl Coach {
     }
 
     pub fn load_train_examples(&mut self) -> std::io::Result<()> {
-        let model_file = Path::new(&self.args.load_folder).join(&self.args.load_file);
-        let examples_file = model_file.with_extension("examples");
-        if !examples_file.exists() {
-            panic!("File not found: {}", examples_file.to_str().unwrap());
+        let examples_file_name = self.args.load_file.to_string() + ".examples";
+        let example_file = Path::new(&self.args.load_folder).join(&examples_file_name);
+        if !example_file.exists() {
+            panic!("File not found: {}", example_file.to_str().unwrap());
         } else {
-            let  file = fs::File::open(examples_file)?;
+            let  file = fs::File::open(example_file)?;
             self.examples_history = bincode::deserialize_from(&file).unwrap_or_else(|e| {
                 println!("Failed to load examples: {}", e);
                 Vec::new()
