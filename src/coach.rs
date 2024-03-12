@@ -108,18 +108,18 @@ impl Coach {
 
             if p_wins + n_wins == 0 || (n_wins as f32 / (p_wins + n_wins) as f32) < self.args.update_threshold {
                 println!("REJECTING NEW MODEL");
-                self.model.load_checkpoint(self.args.checkpoint.clone(), "temp.pth.tar".to_string())?;
+                self.model.load_checkpoint(self.args.checkpoint.clone(), "temp.pt".to_string())?;
             } else {
                 println!("ACCEPTING NEW MODEL");
                 self.model.save_checkpoint(self.args.checkpoint.clone(), self.get_checkpoint_file(iteration))?;
-                self.model.save_checkpoint(self.args.checkpoint.clone(), "best.pth.tar".to_string())?;
+                self.model.save_checkpoint(self.args.checkpoint.clone(), "best.pt".to_string())?;
             }
         }
         Ok(())
     }
 
     pub fn get_checkpoint_file(&self, iteration: i32) -> String {
-        format!("checkpoint_{}_.pth.tar", iteration).to_string()
+        format!("checkpoint_{}_.pt", iteration).to_string()
     }
 
     pub fn load_train_examples(&mut self) -> std::io::Result<()> {

@@ -117,15 +117,15 @@ pub fn bench_alphazero_get_action_probs(c: &mut Criterion) {
 
 criterion_group!(
     benches,
-    //bench_generate_random_board,
+    bench_generate_random_board,
     bench_canonical_board_to_tensor,
-    //bench_canonical_board_get_next_state,
-    //bench_canonical_board_to_array_board,
-    //bench_canonical_board_to_hashmap_string,
-    //bench_canonical_board_mirroring_and_rotation,
-    //bench_rotate_array_board,
-    //bench_flip_horizontal_array_board,
-    //ench_rotate_policy,
+    bench_canonical_board_get_next_state,
+    bench_canonical_board_to_array_board,
+    bench_canonical_board_to_hashmap_string,
+    bench_canonical_board_mirroring_and_rotation,
+    bench_rotate_array_board,
+    bench_flip_horizontal_array_board,
+    bench_rotate_policy,
     bench_mcts,
     bench_alphazero_get_action_probs,
 );

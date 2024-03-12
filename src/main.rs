@@ -1,3 +1,4 @@
+use std::path::Path;
 use clap::Parser;
 
 use battlesnake_alphazero::alpha_zero_model::AlphaZeroModel;
@@ -6,6 +7,7 @@ use battlesnake_alphazero::coach::Coach;
 
 fn main() {
     let args = Args::parse();
+
 
     let mut model = AlphaZeroModel::default();
     if args.load_model {
