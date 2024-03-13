@@ -1,6 +1,6 @@
 use std::fs;
 use std::fs::OpenOptions;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use indicatif::ProgressStyle;
 use itertools::Itertools;
@@ -75,9 +75,9 @@ impl Coach {
                     .unwrap()
                     .progress_chars("#>-"));
                 for _ in 0..self.args.num_episodes {
-                    pb.inc(1);
                     self.mcts = MCTS::new(&self.model, self.args.clone());
                     train_examples.append(self.execute_episode());
+                    pb.inc(1);
                 }
                 self.examples_history.push(train_examples.deque.into_iter().collect_vec());
                 pb.finish();
@@ -86,16 +86,20 @@ impl Coach {
                 println!("Removing the oldest examples. len: {}", self.examples_history.len());
                 self.examples_history.remove(0);
             }
+
+            print!("Saving examples ...");
             self.save_train_examples(iteration - 1).unwrap_or_else(|e| {
                 println!("Failed to save examples: {}", e);
             });
+            println!("Examples saved");
+
 
             let mut train_examples = self.examples_history.clone().into_iter().flatten().collect::<Vec<Sample>>();
             train_examples.shuffle(&mut rand::thread_rng());
 
 
-            self.model.save_checkpoint(self.args.checkpoint.clone(), "temp.pth.tar".to_string())?;
-            self.p_model.load_checkpoint(self.args.checkpoint.clone(), "temp.pth.tar".to_string())?;
+            self.p_model = self.model.clone();
+
             let p_mcts = MCTS::new(&self.p_model, self.args.clone());
 
             self.model.train(train_examples);
@@ -106,25 +110,26 @@ impl Coach {
             let (n_wins, p_wins, draws) = arena.play_games(self.args.arena_compare);
             println!("NEW/PREV WINS : {} / {} ; DRAWS : {}", n_wins, p_wins, draws);
 
+            print!("Saving new model ...");
             if p_wins + n_wins == 0 || (n_wins as f32 / (p_wins + n_wins) as f32) < self.args.update_threshold {
                 println!("REJECTING NEW MODEL");
-                self.model.load_checkpoint(self.args.checkpoint.clone(), "temp.pt".to_string())?;
+                self.model = self.p_model.clone();
             } else {
                 println!("ACCEPTING NEW MODEL");
-                self.model.save_checkpoint(self.args.checkpoint.clone(), self.get_checkpoint_file(iteration))?;
-                self.model.save_checkpoint(self.args.checkpoint.clone(), "best.pt".to_string())?;
+                self.model.save_checkpoint(&PathBuf::from(&self.args.checkpoint).join(self.get_checkpoint_file(iteration)))?;
+                self.model.save_checkpoint(&PathBuf::from(&self.args.checkpoint).join("best.safetensors"))?;
             }
+            println!("New model saved");
         }
         Ok(())
     }
 
     pub fn get_checkpoint_file(&self, iteration: i32) -> String {
-        format!("checkpoint_{}_.pt", iteration).to_string()
+        format!("checkpoint_{}_.safetensors", iteration).to_string()
     }
 
     pub fn load_train_examples(&mut self) -> std::io::Result<()> {
-        let examples_file_name = self.args.load_file.to_string() + ".examples";
-        let example_file = Path::new(&self.args.load_folder).join(&examples_file_name);
+        let example_file = Path::new(&self.args.check_point_path);
         if !example_file.exists() {
             panic!("File not found: {}", example_file.to_str().unwrap());
         } else {
@@ -145,17 +150,8 @@ impl Coach {
         let check_point_file_name = self.get_checkpoint_file(iteration) + ".examples";
         let check_point_file = Path::new(&check_point_file_name);
         let filename = Path::new(&self.args.checkpoint).join(check_point_file);
-        let mut prev_examples_history: Vec<Vec<Sample>> = Vec::new();
-        if filename.exists() {
-            let file = fs::File::open(filename.clone())?;
-            prev_examples_history = bincode::deserialize_from(&file).unwrap_or_else(|e| {
-                println!("Failed to load examples: {}", e);
-                Vec::new()
-            });
-        }
-        prev_examples_history.append(&mut self.examples_history.clone());
         let file = OpenOptions::new().write(true).create(true).open(filename)?;
-        bincode::serialize_into(&file, &prev_examples_history).unwrap_or_else(|e| {
+        bincode::serialize_into(&file, &self.examples_history).unwrap_or_else(|e| {
             println!("Failed to save examples: {}", e);
         });
         Ok(())

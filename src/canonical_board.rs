@@ -40,25 +40,26 @@ pub fn flip_board_horizontal(board: &[[f32; 11]; 11]) -> [[f32; 11]; 11] {
     new_board
 }
 
-pub fn rotate_policy(pi: &[f32; 4], rotation: usize, flip: bool) -> [f32; 4] {
+
+pub fn rotate_policy(pi: &[f32; 4], rotation: usize, flip_horizontal: bool) -> [f32; 4] {
     // Adjust the policy vector based on rotation and flip
     // You need to map the directions accordingly
-    let mut new_pi = [0.0; 4];
-    let rotation_mapping = match rotation {
+
+    let mut rotation_mapping = match rotation {
         0 => [0, 1, 2, 3], // No rotation
         1 => [2, 3, 1, 0], // 90 degrees - Up becomes Left, Right becomes Up, etc.
         2 => [1, 0, 3, 2], // 180 degrees - Up becomes Down, Left becomes Right, etc.
         3 => [3, 2, 0, 1], // 270 degrees - Up becomes Right, Down becomes Left, etc.
         _ => [0, 1, 2, 3], // Should not happen
     };
+    if flip_horizontal {
+        rotation_mapping.swap(2, 3);
+    }
+    let mut new_pis = [0.0; 4];
     for i in 0..4 {
-        new_pi[i] = pi[rotation_mapping[i]];
+        new_pis[i] = pi[rotation_mapping[i]];
     }
-    // Handle horizontal flipping if required
-    if flip {
-        new_pi = [new_pi[1], new_pi[0], new_pi[3], new_pi[2]];
-    }
-    new_pi
+    new_pis
 }
 
 
@@ -121,20 +122,20 @@ impl CanonicalBoard {
         let mut symmetries: Vec<([[f32; 11]; 11], [f32; 4], i32)> = Vec::new();
 
         let rotations = [0, 1, 2, 3]; // Represents 0, 90, 180, and 270 degrees
-        let flips = [false, true]; // Represents no flip and horizontal flip
+        let flips_horizontal = [false, true]; // Represents no flip and horizontal flip
         let current_player = self.get_current_player();
 
         let array_board = self.to_array_board();
         for &rotation in &rotations {
-            for &flip in &flips {
+            for &flip_horizontal in &flips_horizontal {
                 let mut new_board = rotate_board(&array_board, rotation);
-                if flip {
+                if flip_horizontal {
                     new_board = flip_board_horizontal(&new_board);
                 }
-
-                let new_pi = rotate_policy(pi, rotation, flip);
+                let new_pi = rotate_policy(pi, rotation, flip_horizontal);
                 symmetries.push((new_board, new_pi, current_player));
             }
+
         }
         symmetries
     }
@@ -142,25 +143,33 @@ impl CanonicalBoard {
 
     pub fn to_array_board(&self) -> [[f32; 11]; 11] {
         let mut result = [[0.0; 11]; 11];
+        let board_size_i32 = (BOARD_SIZE - 1) as i32;
         let (self_head, self_body, other_head, other_body, foods) = self.get_info_for_repr();
         if let Some(self_head) = self_head {
-            result[self_head.x as usize][self_head.y as usize] = 1.0;
-        }
-        if let Some(self_body) = self_body {
-            for body in self_body {
-                result[body.x as usize][body.y as usize] = 2.0;
+            result[(board_size_i32 - self_head.y) as usize][self_head.x as usize] = 1.0;
+            if let Some(self_body) = self_body {
+                for body in self_body {
+                    if body != self_head{
+                        result[(board_size_i32 - body.y) as usize][body.x as usize] = 2.0;
+
+                    }
+                }
             }
         }
+
         if let Some(other_head) = other_head {
-            result[other_head.x as usize][other_head.y as usize] = -1.0;
-        }
-        if let Some(other_body) = other_body {
-            for body in other_body {
-                result[body.x as usize][body.y as usize] = -2.0;
+            result[(board_size_i32 - other_head.y) as usize][other_head.x as usize] = -1.0;
+            if let Some(other_body) = other_body {
+                for body in other_body {
+                    if body != other_head{
+                        result[(board_size_i32 - body.y) as usize][body.x as usize] = -2.0;
+                    }
+                }
             }
         }
+
         for food in foods {
-            result[food.x as usize][food.y as usize] = 0.5;
+            result[(board_size_i32 - food.y) as usize][food.x as usize] = 0.5;
         }
         result
     }
@@ -173,20 +182,31 @@ impl CanonicalBoard {
 
         // Inline function to reduce code duplication
         let mut set_position = |x: usize, y: usize, ch: char| {
-            result[x + y * board_size] = ch;
+            result[x + (board_size - 1 - y) * board_size] = ch;
         };
 
         if let Some(self_head) = self_head {
             set_position(self_head.x as usize, self_head.y as usize, '1');
+            if let Some(self_body) = self_body {
+                for body in self_body {
+                    if body == self_head {
+                        continue;
+                    }
+                    set_position(body.x as usize, body.y as usize, '2');
+                }
+            }
         }
-        if let Some(self_body) = self_body {
-            self_body.iter().for_each(|body| set_position(body.x as usize, body.y as usize, '2'));
-        }
+
         if let Some(other_head) = other_head {
             set_position(other_head.x as usize, other_head.y as usize, '3');
-        }
-        if let Some(other_body) = other_body {
-            other_body.iter().for_each(|body| set_position(body.x as usize, body.y as usize, '4'));
+            if let Some(other_body) = other_body {
+                for body in other_body {
+                    if body == other_head {
+                        continue;
+                    }
+                    set_position(body.x as usize, body.y as usize, '4');
+                }
+            }
         }
         foods.iter().for_each(|food| set_position(food.x as usize, food.y as usize, '5'));
         result.into_iter().collect()
@@ -219,14 +239,14 @@ impl CanonicalBoard {
 
 
     pub fn get_game_ended(&self, player_id: i32) -> f32 {
-        let snake_id = game::player_to_snake(player_id);
         if self.board.is_over() {
             match self.board.get_winner() {
                 None => {
                     1e-4
                 }
                 Some(winner) => {
-                    if winner == snake_id {
+                    if winner ==game::player_to_snake(player_id)
+                    {
                         1.0
                     } else {
                         -1.0
@@ -267,10 +287,9 @@ impl CanonicalBoard {
 
 
     pub fn get_valid_moves(&self) -> [bool; 4] {
-        let all_moves: Vec<(SnakeId, Vec<Move>)> = self.board.reasonable_moves_for_each_snake().collect_vec();
         let snake_id = self.get_current_snake();
         let mut valid_moves = [false; 4];
-        for (id, mvs) in all_moves {
+        for (id, mvs) in self.board.reasonable_moves_for_each_snake() {
             if id != snake_id { continue; }
             for mv in mvs {
                 valid_moves[mv.as_index()] = true;

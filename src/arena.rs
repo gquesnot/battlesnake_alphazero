@@ -51,7 +51,6 @@ impl Arena {
             .unwrap()
             .progress_chars("##-"));
         for _ in 0..num {
-            pb.inc(1);
             let game_result = self.play_game();
             if game_result == 1.0 {
                 n_wins += 1;
@@ -60,6 +59,7 @@ impl Arena {
             } else {
                 draws += 1;
             }
+            pb.inc(1);
             pb.set_message(format!("New wins: {} Past wins: {} Draws: {}", n_wins, p_wins, draws));
         }
         (n_wins, p_wins, draws)

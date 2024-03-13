@@ -75,7 +75,7 @@ pub fn get_random_snake_body(snake_head: Position, rng: &mut rand::rngs::ThreadR
     let mut snake_body = VecDeque::new();
     snake_body.push_back(snake_head);
     let mut current_position = snake_head;
-    for _ in 0..3 {
+    for _ in 0..2 {
         let mut new_position = current_position;
         while snake_body.contains(&new_position)
             || new_position.x > 10

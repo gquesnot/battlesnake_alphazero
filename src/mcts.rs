@@ -63,8 +63,9 @@ impl MCTS {
             probabilities
         } else {
             let mut counts_float: [f32; 4] = [0.0; 4];
+            let temp2 = 1.0 / temp;
             for (i, count) in counts_float.iter_mut().enumerate() {
-                *count = (counts[i] as f32).powf(1.0 / temp);
+                *count = (counts[i] as f32).powf(temp2);
             }
             let sum: f32 = counts_float.iter().sum();
             let mut probabilities = [0.0; 4];

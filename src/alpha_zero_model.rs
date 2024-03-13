@@ -1,7 +1,7 @@
-use std::fs::OpenOptions;
+use std::path::PathBuf;
 
 use indicatif::ProgressStyle;
-use itertools::multiunzip;
+use itertools::{Itertools, multiunzip};
 use ndarray::{arr1, arr2, arr3};
 use tch::{Device, nn, Tensor};
 use tch::nn::{Adam, OptimizerConfig};
@@ -20,6 +20,8 @@ pub fn get_base_device() -> Device {
 pub fn get_base_var_store() -> nn::VarStore {
     nn::VarStore::new(get_base_device())
 }
+
+pub type SampleZipped = (Vec<[[f32; 11]; 11]>, Vec<[f32; 4]>, Vec<f32>);
 
 
 pub struct AlphaZeroModel {
@@ -48,29 +50,24 @@ impl AlphaZeroModel {
             .unwrap()
             .progress_chars("##-"));
 
-        let total_iterations = samples.len() / BATCH_SIZE;
+        let batch_count = samples.len() / BATCH_SIZE;
 
 
         for _ in 0..EPOCHS {
-            for (i, sample) in samples.chunks(BATCH_SIZE).enumerate() {
-                let (s, pi, value): (Vec<[[f32; 11]; 11]>, Vec<[f32; 4]>, Vec<f32>) = multiunzip(sample.into_iter().map(
-                    |(s, p, v)| (s, p, v)
-                ));
+            for i in 0..batch_count {
+                let ids = rand::seq::index::sample(&mut rand::thread_rng(), samples.len(), BATCH_SIZE).into_vec();
+                let (boards, pi, value): SampleZipped = multiunzip(ids.iter().map(|&i| samples[i]).collect_vec());
 
-                let mut boards = Tensor::try_from(arr3(&s)).unwrap();
+                let mut s = Tensor::try_from(arr3(&boards)).unwrap();
                 let mut target_pis = Tensor::try_from(arr2(&pi)).unwrap();
                 let mut target_vs = Tensor::try_from(arr1(&value)).unwrap();
                 if get_base_device().is_cuda() {
-                    boards = boards.to_device(get_base_device());
+                    s = s.to_device(get_base_device());
                     target_pis = target_pis.to_device(get_base_device());
                     target_vs = target_vs.to_device(get_base_device());
                 }
 
-                //println!("Boards: {:?}", boards.size());
-                //println!("Target Pi: {:?}", target_pis.size());
-                //println!("Target V: {:?}", target_vs.size());
-
-                let (out_pi, out_v) = self.nnet.forward(&boards, true);
+                let (out_pi, out_v) = self.nnet.forward(&s, true);
                 //println!("Out Pi: {:?}", out_pi.size());
                 //println!("Out V: {:?}", out_v.size());
                 let l_pi = self.loss_pi(&target_pis, &out_pi);
@@ -79,12 +76,12 @@ impl AlphaZeroModel {
 
                 let f32_l_pi = f32::try_from(l_pi).unwrap();
                 let f32_l_v = f32::try_from(l_v).unwrap();
-                let b_size = usize::try_from(boards.size()[0]).unwrap();
+                let b_size = usize::try_from(s.size()[0]).unwrap();
 
                 pi_losses.update(f32_l_pi, b_size);
                 v_losses.update(f32_l_v, b_size);
                 if i % 100 == 0 {
-                    pb.set_message(format!("{}/{} pi_loss: {} v_loss: {}", i, total_iterations, pi_losses, v_losses));
+                    pb.set_message(format!("{}/{} pi_loss: {} v_loss: {}", i, batch_count, pi_losses, v_losses));
                 }
 
                 optimizer.zero_grad();
@@ -104,15 +101,10 @@ impl AlphaZeroModel {
         }
         tensor_board = tensor_board.view([1, BOARD_SIZE, BOARD_SIZE]);
         let (pi, v) = self.nnet.forward(&tensor_board, false);
-        let pi = pi.exp();
-        let policy = Vec::<f32>::try_from(pi.view(-1))
-            .map_err(|e| format!("Failed to convert policy to Vec<f32>: {}", e))
-            .expect("Expected a Vec<f32> value after squeeze_dim");
-        let value = f32::try_from(v.view(-1))
-            .map_err(|e| format!("Failed to convert value to f32: {}", e))
-            .expect("Expected a single f32 value after squeeze_dim");
+        let pi: Vec<f32> = pi.exp().to_device(Device::Cpu).view(-1).try_into().unwrap();
+        let value: f32 = v.to_device(Device::Cpu).try_into().unwrap();
         let mut actions: [f32; 4] = [0.0; 4];
-        actions.copy_from_slice(&policy);
+        actions.copy_from_slice(&pi);
         (actions, value)
     }
 
@@ -128,21 +120,18 @@ impl AlphaZeroModel {
     }
 
 
-    pub fn save_checkpoint(&self, folder: String, filename: String) -> Result<(), std::io::Error> {
-        let path = std::path::Path::new(&folder).join(filename);
-        if !path.exists() {
-            std::fs::create_dir_all(&folder)?;
+    pub fn save_checkpoint(&self, model_path: &PathBuf) -> Result<(), std::io::Error> {
+        if !model_path.exists() {
+            std::fs::create_dir_all(model_path.parent().unwrap())?;
         }
-        let file = OpenOptions::new().write(true).create(true).open(path)?;
-        self.vs.save_to_stream(file).unwrap_or_else(|e| {
+        self.vs.save(model_path).unwrap_or_else(|e| {
             println!("Failed to save checkpoint: {}", e);
         });
         Ok(())
     }
 
-    pub fn load_checkpoint(&mut self, folder: String, filename: String) -> Result<(), std::io::Error> {
-        let path = std::path::Path::new(&folder).join(filename);
-        self.vs.load(path).unwrap_or_else(|e| {
+    pub fn load_checkpoint(&mut self, model_path: &PathBuf) -> Result<(), std::io::Error> {
+        self.vs.load(model_path).unwrap_or_else(|e| {
             println!("Failed to load checkpoint: {}", e);
         });
         Ok(())
@@ -153,6 +142,7 @@ impl Clone for AlphaZeroModel {
     fn clone(&self) -> Self {
         let mut vs = get_base_var_store();
         vs.copy(&self.vs).unwrap();
+        vs.trainable_variables();
         let nnet = NeuralNetwork::new(&vs.root());
         Self {
             vs,

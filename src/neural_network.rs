@@ -63,15 +63,29 @@ impl NeuralNetwork {
         }
     }
 
-    pub fn forward(&self, x: &tch::Tensor, is_training: bool) -> (tch::Tensor, tch::Tensor) {
-        let x = x.view([-1, 1, BOARD_SIZE, BOARD_SIZE]); // Adjust the view based on your board input
-        let x = x.apply(&self.conv1).apply_t(&self.bn1, is_training).relu();
-        let x = x.apply(&self.conv2).apply_t(&self.bn2, is_training).relu();
-        let x = x.apply(&self.conv3).apply_t(&self.bn3, is_training).relu();
-        let x = x.apply(&self.conv4).apply_t(&self.bn4, is_training).relu();
-        let x = x.view([-1, NUM_CHANNELS * (BOARD_SIZE - 4) * (BOARD_SIZE - 4)]);
-        let x = x.apply(&self.fc1).apply_t(&self.fc1_bn, is_training).relu().dropout(DROPOUT, is_training);
-        let x = x.apply(&self.fc2).apply_t(&self.fc2_bn, is_training).relu().dropout(DROPOUT, is_training);
+    pub fn forward(&self, input: &tch::Tensor, is_training: bool) -> (tch::Tensor, tch::Tensor) {
+        let x = input.view([-1, 1, BOARD_SIZE, BOARD_SIZE])
+            .apply(&self.conv1)
+            .apply_t(&self.bn1, false)
+            .relu()
+            .apply(&self.conv2)
+            .apply_t(&self.bn2, false)
+            .relu()
+            .apply(&self.conv3)
+            .apply_t(&self.bn3, false)
+            .relu()
+            .apply(&self.conv4)
+            .apply_t(&self.bn4, false)
+            .relu()
+            .view([-1, NUM_CHANNELS * (BOARD_SIZE - 4) * (BOARD_SIZE - 4)])
+            .apply(&self.fc1)
+            .apply_t(&self.fc1_bn,false)
+            .relu()
+            .dropout(DROPOUT, is_training)
+            .apply(&self.fc2)
+            .apply_t(&self.fc2_bn,false)
+            .relu()
+            .dropout(DROPOUT, is_training);
         let v = x.apply(&self.fc_v).tanh(); // Value function output
         let pi = x.apply(&self.fc_pi).log_softmax(1, tch::Kind::Float); // Policy function output
         (pi, v)
