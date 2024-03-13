@@ -19,10 +19,10 @@ pub struct Args {
     #[arg(long, default_value_t = 300)]
     pub num_iterations: i32,
 
-    #[arg(long, default_value_t = 0.002)]
+    #[arg(long, default_value_t = 0.002_f64)]
     pub learning_rate: f64,
 
-    #[arg(long, default_value_t = 64)]
+    #[arg(long, default_value_t = 64_usize)]
     pub batch_size: usize,
 
     #[arg(long, default_value_t = 10)]
@@ -31,13 +31,13 @@ pub struct Args {
     #[arg(long, default_value_t = 25)]
     pub num_episodes: i32,
 
-    #[arg(long, default_value_t = 200000)]
+    #[arg(long, default_value_t = 200000_usize)]
     pub max_queue_size: usize,
 
     #[arg(long, default_value_t = 15)]
     pub temp_threshold: i32,
 
-    #[arg(long, default_value_t = 0.55)]
+    #[arg(long, default_value_t = 0.55_f32)]
     pub update_threshold: f32,
 
     #[arg(long, default_value_t = 25)]
@@ -46,7 +46,7 @@ pub struct Args {
     #[arg(long, default_value_t = 40)]
     pub arena_compare: i32,
 
-    #[arg(long, default_value_t = 1.0)]
+    #[arg(long, default_value_t = 1.0_f32)]
     pub c_puct: f32,
 
     #[arg(long, default_value_t = String::from("./temp3/"))]
@@ -64,7 +64,7 @@ pub struct Args {
     #[arg(long, default_value_t = String::from("./temp/"))]
     pub examples_dir: String,
 
-    #[arg(long, default_value_t = 20)]
+    #[arg(long, default_value_t = 20_usize)]
     pub num_iters_for_train_examples_history: usize,
 }
 
