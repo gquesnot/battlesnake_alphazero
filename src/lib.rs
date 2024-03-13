@@ -1,4 +1,3 @@
-#![feature(slice_take)]
 
 use clap::Parser;
 
