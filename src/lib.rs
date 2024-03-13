@@ -15,7 +15,7 @@ pub mod examples_handler;
 
 
 #[derive(Parser, Debug, Clone, Default)]
-#[clap(name = "battlesnake alphazero", version = "1.0", author = "Canarit")]
+#[clap(name = "battlesnake alphazero", version = "2.0", author = "Canarit")]
 pub struct Args {
     #[arg(long, default_value_t = 300)]
     pub num_iterations: i32,
