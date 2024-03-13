@@ -1,4 +1,3 @@
-#![feature(slice_take)]
 
 use clap::Parser;
 
@@ -16,10 +15,10 @@ pub mod canonical_board;
 #[derive(Parser, Debug, Clone, Default)]
 #[clap(name = "battlesnake alphazero", version = "1.0", author = "Canarit")]
 pub struct Args {
-    #[arg(long, default_value_t = 1000)]
+    #[arg(long, default_value_t = 300)]
     pub num_iterations: i32,
 
-    #[arg(long, default_value_t = 50)]
+    #[arg(long, default_value_t = 25)]
     pub num_episodes: i32,
 
     #[arg(long, default_value_t = 200000)]
@@ -31,7 +30,7 @@ pub struct Args {
     #[arg(long, default_value_t = 0.55)]
     pub update_threshold: f32,
 
-    #[arg(long, default_value_t = 50)]
+    #[arg(long, default_value_t = 25)]
     pub num_mcts_sims: i32,
 
     #[arg(long, default_value_t = 40)]
@@ -40,13 +39,13 @@ pub struct Args {
     #[arg(long, default_value_t = 1.0)]
     pub c_puct: f32,
 
-    #[arg(long, default_value_t = String::from("./temp2/"))]
+    #[arg(long, default_value_t = String::from("./temp/"))]
     pub checkpoint: String,
 
     #[arg(long, default_value_t = false)]
     pub load_model: bool,
 
-    #[arg(long, default_value_t = String::from("./temp2/best.safetensors"))]
+    #[arg(long, default_value_t = String::from("./temp/best.safetensors"))]
     pub model_path: String,
 
 
@@ -54,10 +53,10 @@ pub struct Args {
     pub load_checkpoint: bool,
 
 
-    #[arg(long, default_value_t = String::from("./temp2/checkpoint_4_.safetensors.examples"))]
+    #[arg(long, default_value_t = String::from("./temp/checkpoint_4_.safetensors.examples"))]
     pub check_point_path: String,
 
-    #[arg(long, default_value_t = 10)]
+    #[arg(long, default_value_t = 20)]
     pub num_iters_for_train_examples_history: usize,
 }
 

@@ -16,12 +16,11 @@ impl<T> BoundedDeque<T> {
         }
     }
 
-    pub fn append(&mut self, other: Vec<T>) -> u64 {
-        let len = other.len();
-        for sample in other.into_iter() {
-            self.push_back(sample);
+    pub fn append(&mut self, other: Vec<T>) {
+        self.deque.extend(other);
+        while self.deque.len() > self.max_len {
+            self.deque.pop_front();
         }
-        len as u64
     }
 
 

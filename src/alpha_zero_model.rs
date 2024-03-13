@@ -7,7 +7,7 @@ use tch::{Device, nn, Tensor};
 use tch::nn::{Adam, OptimizerConfig};
 
 use crate::canonical_board::CanonicalBoard;
-use crate::config::{BATCH_SIZE, BOARD_SIZE, EPOCHS, LEARNING_RATE, MINI_BATCH};
+use crate::config::{BATCH_SIZE, BOARD_SIZE, EPOCHS, LEARNING_RATE};
 use crate::game::Sample;
 use crate::neural_network::NeuralNetwork;
 use crate::utils::AverageMeter;

@@ -12,4 +12,4 @@ pub const BATCH_SIZE: usize = 64;
 pub const MINI_BATCH: usize = 2048;
 
 pub const DROPOUT: f64 = 0.3;
-pub const NUM_CHANNELS: i64 = 256;
+pub const NUM_CHANNELS: i64 = 512;
