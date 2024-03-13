@@ -21,11 +21,11 @@ impl Arena {
         let board = Board::init_random_board();
         let mut current_player = 1;
         let mut canonical_board = board.as_canonical(current_player);
-       loop  {
-           let value = canonical_board.get_game_ended(1);
-           if value != 0.0{
+        loop {
+            let value = canonical_board.get_game_ended(1);
+            if value != 0.0 {
                 return value;
-           }
+            }
             let actions = if current_player == 1 {
                 self.n_player.get_action_prob(&canonical_board, 0.0)
             } else {

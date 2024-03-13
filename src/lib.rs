@@ -1,4 +1,3 @@
-
 use clap::Parser;
 
 pub mod game;
@@ -39,7 +38,7 @@ pub struct Args {
     #[arg(long, default_value_t = 1.0)]
     pub c_puct: f32,
 
-    #[arg(long, default_value_t = String::from("./temp/"))]
+    #[arg(long, default_value_t = String::from("./temp3/"))]
     pub checkpoint: String,
 
     #[arg(long, default_value_t = false)]
@@ -48,13 +47,11 @@ pub struct Args {
     #[arg(long, default_value_t = String::from("./temp/best.safetensors"))]
     pub model_path: String,
 
-
     #[arg(long, default_value_t = false)]
-    pub load_checkpoint: bool,
-
+    pub load_examples: bool,
 
     #[arg(long, default_value_t = String::from("./temp/checkpoint_4_.safetensors.examples"))]
-    pub check_point_path: String,
+    pub examples_path: String,
 
     #[arg(long, default_value_t = 20)]
     pub num_iters_for_train_examples_history: usize,

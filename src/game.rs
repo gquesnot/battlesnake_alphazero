@@ -73,21 +73,19 @@ impl MoveBattleSnake for Board {
 }
 
 
-
-pub fn generate_foods(snake_1_head:&Position, snake_2_head:&Position) -> Vec<Position>{
+pub fn generate_foods(snake_1_head: &Position, snake_2_head: &Position) -> Vec<Position> {
     let mut foods = vec![];
     let center_coord: (i32, i32) = ((BOARD_SIZE as i32 - 1) / 2, (BOARD_SIZE as i32 - 1) / 2);
     let mut rng = rand::thread_rng();
-    foods.push( place_food_for_snake(&foods, snake_1_head, center_coord, &mut rng));
+    foods.push(place_food_for_snake(&foods, snake_1_head, center_coord, &mut rng));
     foods.push(place_food_for_snake(&foods, snake_2_head, center_coord, &mut rng));
-    if !foods.contains(&center_coord){
+    if !foods.contains(&center_coord) {
         foods.push(center_coord);
     }
-    foods.iter().map(|(x, y)| Position{x: *x, y: *y}).collect()
+    foods.iter().map(|(x, y)| Position { x: *x, y: *y }).collect()
 }
 
-pub fn place_food_for_snake(foods:&Vec<(i32,i32)>, snake_head:&Position, center_coord:(i32,i32), rng:&mut ThreadRng)->(i32,i32){
-
+pub fn place_food_for_snake(foods: &Vec<(i32, i32)>, snake_head: &Position, center_coord: (i32, i32), rng: &mut ThreadRng) -> (i32, i32) {
     let possible_player_food = vec![
         (snake_head.x - 1, snake_head.y - 1),
         (snake_head.x - 1, snake_head.y + 1),
@@ -99,14 +97,14 @@ pub fn place_food_for_snake(foods:&Vec<(i32,i32)>, snake_head:&Position, center_
         if center_coord == p || (p.0 < 0 || p.0 > 10) || (p.1 < 0 || p.1 > 10) {
             continue;
         }
-        if foods.contains(&p){
+        if foods.contains(&p) {
             continue;
         }
-        if (p.0 < snake_head.x  && snake_head.x < center_coord.0 )
+        if (p.0 < snake_head.x && snake_head.x < center_coord.0)
             || (center_coord.0 < snake_head.x && snake_head.x < p.0)
-            || (p.1 < snake_head.y  && snake_head.y < center_coord.1 )
-            || (center_coord.1 < snake_head.y && snake_head.y < p.1){
-            if !((p.0 == 0 || p.0 == 10 ) && (p.1 == 0 || p.1 == 10)){
+            || (p.1 < snake_head.y && snake_head.y < center_coord.1)
+            || (center_coord.1 < snake_head.y && snake_head.y < p.1) {
+            if !((p.0 == 0 || p.0 == 10) && (p.1 == 0 || p.1 == 10)) {
                 available_food.push(p);
             }
         }
@@ -114,7 +112,6 @@ pub fn place_food_for_snake(foods:&Vec<(i32,i32)>, snake_head:&Position, center_
     available_food.shuffle(rng);
     available_food[0]
 }
-
 
 
 impl BoardInit for Board {
@@ -148,10 +145,8 @@ impl BoardInit for Board {
         let player_2_head = start_points[1];
 
         let player_1_body = VecDeque::from([player_1_head, player_1_head, player_1_head]);
-        let  player_2_body = VecDeque::from([player_2_head, player_2_head, player_2_head]);
+        let player_2_body = VecDeque::from([player_2_head, player_2_head, player_2_head]);
         let foods = generate_foods(&player_1_head, &player_2_head);
-
-
 
 
         let player_1 = BattleSnake {

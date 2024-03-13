@@ -79,11 +79,11 @@ impl NeuralNetwork {
             .relu()
             .view([-1, NUM_CHANNELS * (BOARD_SIZE - 4) * (BOARD_SIZE - 4)])
             .apply(&self.fc1)
-            .apply_t(&self.fc1_bn,false)
+            .apply_t(&self.fc1_bn, false)
             .relu()
             .dropout(DROPOUT, is_training)
             .apply(&self.fc2)
-            .apply_t(&self.fc2_bn,false)
+            .apply_t(&self.fc2_bn, false)
             .relu()
             .dropout(DROPOUT, is_training);
         let v = x.apply(&self.fc_v).tanh(); // Value function output

@@ -2,7 +2,7 @@ use battlesnake_game_types::types::{FoodGettableGame, HeadGettableGame, HealthGe
 use battlesnake_game_types::wire_representation::Position;
 use itertools::Itertools;
 use ndarray::Array2;
-use tch::{Tensor};
+use tch::Tensor;
 
 use crate::config::BOARD_SIZE;
 use crate::game;
@@ -135,7 +135,6 @@ impl CanonicalBoard {
                 let new_pi = rotate_policy(pi, rotation, flip_horizontal);
                 symmetries.push((new_board, new_pi, current_player));
             }
-
         }
         symmetries
     }
@@ -149,9 +148,8 @@ impl CanonicalBoard {
             result[(board_size_i32 - self_head.y) as usize][self_head.x as usize] = 1.0;
             if let Some(self_body) = self_body {
                 for body in self_body {
-                    if body != self_head{
+                    if body != self_head {
                         result[(board_size_i32 - body.y) as usize][body.x as usize] = 2.0;
-
                     }
                 }
             }
@@ -161,7 +159,7 @@ impl CanonicalBoard {
             result[(board_size_i32 - other_head.y) as usize][other_head.x as usize] = -1.0;
             if let Some(other_body) = other_body {
                 for body in other_body {
-                    if body != other_head{
+                    if body != other_head {
                         result[(board_size_i32 - body.y) as usize][body.x as usize] = -2.0;
                     }
                 }
@@ -245,7 +243,7 @@ impl CanonicalBoard {
                     1e-4
                 }
                 Some(winner) => {
-                    if winner ==game::player_to_snake(player_id)
+                    if winner == game::player_to_snake(player_id)
                     {
                         1.0
                     } else {

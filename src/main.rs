@@ -1,4 +1,5 @@
 use std::path::PathBuf;
+
 use clap::Parser;
 
 use battlesnake_alphazero::alpha_zero_model::AlphaZeroModel;
@@ -37,7 +38,7 @@ fn main() {
         println!("Not loading a checkpoint.");
     }
     let mut coach = Coach::new(model, &args);
-    if args.load_checkpoint {
+    if args.load_examples {
         println!("load trainExamples from file");
         coach.load_train_examples().unwrap();
     }
