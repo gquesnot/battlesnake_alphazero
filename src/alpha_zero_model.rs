@@ -7,7 +7,6 @@ use tch::{Device, nn, no_grad, Tensor};
 use tch::nn::{Adam, OptimizerConfig};
 
 use crate::canonical_board::CanonicalBoard;
-use crate::config::{BATCH_SIZE, EPOCHS, LEARNING_RATE};
 use crate::game::Sample;
 use crate::neural_network::NeuralNetwork;
 use crate::utils::AverageMeter;
@@ -40,22 +39,22 @@ impl AlphaZeroModel {
         }
     }
 
-    pub fn train(&self, samples: Vec<Sample>) {
-        let mut optimizer = Adam::default().build(&self.vs, LEARNING_RATE).unwrap();
+    pub fn train(&self, samples: Vec<Sample>, learning_rate: f64, epochs: i32, batch_size: usize) {
+        let mut optimizer = Adam::default().build(&self.vs, learning_rate).unwrap();
         let mut pi_losses = AverageMeter::default();
         let mut v_losses = AverageMeter::default();
-        let pb = indicatif::ProgressBar::new(EPOCHS as u64);
+        let pb = indicatif::ProgressBar::new(epochs as u64);
         pb.set_style(ProgressStyle::default_bar()
             .template("[{elapsed_precise}] [{bar:40.cyan/blue}] {pos:>7}/{len:7} {msg} ({eta})")
             .unwrap()
             .progress_chars("##-"));
 
-        let batch_count = samples.len() / BATCH_SIZE;
+        let batch_count = samples.len() / batch_size;
 
 
-        for _ in 0..EPOCHS {
+        for _ in 0..epochs {
             for i in 0..batch_count {
-                let ids = rand::seq::index::sample(&mut rand::thread_rng(), samples.len(), BATCH_SIZE).into_vec();
+                let ids = rand::seq::index::sample(&mut rand::thread_rng(), samples.len(), batch_size).into_vec();
                 let (boards, pi, value): SampleZipped = multiunzip(ids.iter().map(|&i| samples[i]).collect_vec());
 
                 let mut s = Tensor::try_from(arr3(&boards)).unwrap();

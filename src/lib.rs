@@ -1,3 +1,5 @@
+#![feature(slice_take)]
+
 use clap::Parser;
 
 pub mod game;
@@ -9,6 +11,7 @@ pub mod coach;
 pub mod arena;
 pub mod utils;
 pub mod canonical_board;
+pub mod examples_handler;
 
 
 #[derive(Parser, Debug, Clone, Default)]
@@ -16,6 +19,15 @@ pub mod canonical_board;
 pub struct Args {
     #[arg(long, default_value_t = 300)]
     pub num_iterations: i32,
+
+    #[arg(long, default_value_t = 0.002)]
+    pub learning_rate: f64,
+
+    #[arg(long, default_value_t = 64)]
+    pub batch_size: usize,
+
+    #[arg(long, default_value_t = 10)]
+    pub num_epochs: i32,
 
     #[arg(long, default_value_t = 25)]
     pub num_episodes: i32,
@@ -50,8 +62,8 @@ pub struct Args {
     #[arg(long, default_value_t = false)]
     pub load_examples: bool,
 
-    #[arg(long, default_value_t = String::from("./temp/checkpoint_4_.safetensors.examples"))]
-    pub examples_path: String,
+    #[arg(long, default_value_t = String::from("./temp/"))]
+    pub examples_dir: String,
 
     #[arg(long, default_value_t = 20)]
     pub num_iters_for_train_examples_history: usize,

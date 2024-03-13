@@ -1,6 +1,4 @@
-use std::fs;
-use std::fs::OpenOptions;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 use indicatif::ProgressStyle;
 use itertools::Itertools;
@@ -9,6 +7,7 @@ use rand::seq::SliceRandom;
 use crate::alpha_zero_model::AlphaZeroModel;
 use crate::arena::Arena;
 use crate::Args;
+use crate::examples_handler::ExamplesHandler;
 use crate::game::{Board, BoardInit, CanCanonical, Sample};
 use crate::mcts::MCTS;
 use crate::utils::{BoundedDeque, choose_index_based_on_probability};
@@ -17,20 +16,25 @@ pub struct Coach {
     model: AlphaZeroModel,
     p_model: AlphaZeroModel,
     mcts: MCTS,
-    examples_history: Vec<Vec<Sample>>,
     args: Args,
     skip_first_self_play: bool,
+    examples_handler: ExamplesHandler,
 }
 
 impl Coach {
     pub fn new(model: AlphaZeroModel, args: &Args) -> Self {
+        let mut examples_handler = ExamplesHandler::new(args.examples_dir.clone(), args.max_queue_size);
+        if args.load_examples {
+            examples_handler.load_examples();
+        }
+
         Self {
             model: model.clone(),
             p_model: model.clone(),
             mcts: MCTS::new(&model, args.clone()),
-            examples_history: Vec::new(),
             args: args.clone(),
             skip_first_self_play: false,
+            examples_handler,
         }
     }
 
@@ -79,81 +83,40 @@ impl Coach {
                     train_examples.append(self.execute_episode());
                     pb.inc(1);
                 }
-                self.examples_history.push(train_examples.deque.into_iter().collect_vec());
                 pb.finish();
-            }
-            if self.examples_history.len() > self.args.num_iters_for_train_examples_history {
-                println!("Removing the oldest examples. len: {}", self.examples_history.len());
-                self.examples_history.remove(0);
+                self.examples_handler.save_example(train_examples.deque.into_iter().collect_vec());
             }
 
-            print!("Saving examples ...");
-            self.save_train_examples(iteration - 1).unwrap_or_else(|e| {
-                println!("Failed to save examples: {}", e);
-            });
-            println!("Examples saved");
 
-
-            let mut train_examples = self.examples_history.clone().into_iter().flatten().collect::<Vec<Sample>>();
+            let mut train_examples = self.examples_handler.examples.clone().into_iter().flatten().collect::<Vec<Sample>>();
             train_examples.shuffle(&mut rand::thread_rng());
 
+            self.model.save_checkpoint(&PathBuf::from(&self.args.checkpoint).join("temp.safetensors"))?;
+            self.p_model.load_checkpoint(&PathBuf::from(&self.args.checkpoint).join("temp.safetensors"))?;
 
-            self.p_model = self.model.clone();
 
-            let p_mcts = MCTS::new(&self.p_model, self.args.clone());
-
-            self.model.train(train_examples);
+            self.model.train(train_examples, self.args.learning_rate, self.args.num_epochs, self.args.batch_size);
 
             let mcts = MCTS::new(&self.model, self.args.clone());
+            let p_mcts = MCTS::new(&self.p_model, self.args.clone());
 
             let mut arena = Arena::new(mcts, p_mcts);
             let (n_wins, p_wins, draws) = arena.play_games(self.args.arena_compare);
             println!("NEW/PREV WINS : {} / {} ; DRAWS : {}", n_wins, p_wins, draws);
 
-            print!("Saving new model ...");
             if p_wins + n_wins == 0 || (n_wins as f32 / (p_wins + n_wins) as f32) < self.args.update_threshold {
                 println!("REJECTING NEW MODEL");
-                self.model = self.p_model.clone();
+                self.model.load_checkpoint(&PathBuf::from(&self.args.checkpoint).join("temp.safetensors"))?;
             } else {
                 println!("ACCEPTING NEW MODEL");
                 self.model.save_checkpoint(&PathBuf::from(&self.args.checkpoint).join(self.get_checkpoint_file(iteration)))?;
                 self.model.save_checkpoint(&PathBuf::from(&self.args.checkpoint).join("best.safetensors"))?;
             }
-            println!("New model saved");
         }
         Ok(())
     }
 
     pub fn get_checkpoint_file(&self, iteration: i32) -> String {
-        format!("checkpoint_{}_.safetensors", iteration).to_string()
-    }
-
-    pub fn load_train_examples(&mut self) -> std::io::Result<()> {
-        let example_file = Path::new(&self.args.examples_path);
-        if !example_file.exists() {
-            panic!("File not found: {}", example_file.to_str().unwrap());
-        } else {
-            let file = fs::File::open(example_file)?;
-            self.examples_history = bincode::deserialize_from(&file).unwrap_or_else(|e| {
-                println!("Failed to load examples: {}", e);
-                Vec::new()
-            });
-        }
-        self.skip_first_self_play = true;
-        Ok(())
-    }
-
-    pub fn save_train_examples(&self, iteration: i32) -> std::io::Result<()> {
-        if !Path::new(&self.args.checkpoint).exists() {
-            fs::create_dir_all(&self.args.checkpoint)?;
-        }
-        let check_point_file_name = self.get_checkpoint_file(iteration) + ".examples";
-        let check_point_file = Path::new(&check_point_file_name);
-        let filename = Path::new(&self.args.checkpoint).join(check_point_file);
-        let file = OpenOptions::new().write(true).create(true).open(filename)?;
-        bincode::serialize_into(&file, &self.examples_history).unwrap_or_else(|e| {
-            println!("Failed to save examples: {}", e);
-        });
-        Ok(())
+        format!("checkpoint_{}.safetensors", iteration).to_string()
     }
 }

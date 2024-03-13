@@ -38,10 +38,7 @@ fn main() {
         println!("Not loading a checkpoint.");
     }
     let mut coach = Coach::new(model, &args);
-    if args.load_examples {
-        println!("load trainExamples from file");
-        coach.load_train_examples().unwrap();
-    }
+
 
     println!("Starting the learning process");
     coach.learn().unwrap();
