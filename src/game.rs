@@ -85,7 +85,7 @@ pub fn generate_foods(snake_1_head: &Position, snake_2_head: &Position) -> Vec<P
     foods.iter().map(|(x, y)| Position { x: *x, y: *y }).collect()
 }
 
-pub fn place_food_for_snake(foods: &Vec<(i32, i32)>, snake_head: &Position, center_coord: (i32, i32), rng: &mut ThreadRng) -> (i32, i32) {
+pub fn place_food_for_snake(foods: &[(i32, i32)], snake_head: &Position, center_coord: (i32, i32), rng: &mut ThreadRng) -> (i32, i32) {
     let possible_player_food = vec![
         (snake_head.x - 1, snake_head.y - 1),
         (snake_head.x - 1, snake_head.y + 1),
@@ -100,13 +100,10 @@ pub fn place_food_for_snake(foods: &Vec<(i32, i32)>, snake_head: &Position, cent
         if foods.contains(&p) {
             continue;
         }
-        if (p.0 < snake_head.x && snake_head.x < center_coord.0)
+        if ((p.0 < snake_head.x && snake_head.x < center_coord.0)
             || (center_coord.0 < snake_head.x && snake_head.x < p.0)
-            || (p.1 < snake_head.y && snake_head.y < center_coord.1)
-            || (center_coord.1 < snake_head.y && snake_head.y < p.1) {
-            if !((p.0 == 0 || p.0 == 10) && (p.1 == 0 || p.1 == 10)) {
-                available_food.push(p);
-            }
+            || (p.1 < snake_head.y && snake_head.y < center_coord.1) || (center_coord.1 < snake_head.y && snake_head.y < p.1)) && !((p.0 == 0 || p.0 == 10) && (p.1 == 0 || p.1 == 10)) {
+            available_food.push(p);
         }
     }
     available_food.shuffle(rng);

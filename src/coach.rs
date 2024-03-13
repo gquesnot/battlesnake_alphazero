@@ -54,7 +54,7 @@ impl Coach {
                 return train_examples.into_iter().map(|(s, p, player)| {
                     let player_v: f32 = if current_player != player { 1.0 } else { 0.0 };
                     let b_pow: f32 = -1.0;
-                    let player_value = value * b_pow.powf(player_v) as f32;
+                    let player_value = value * b_pow.powf(player_v);
                     (s, p, player_value)
                 }).collect();
             }
