@@ -62,6 +62,7 @@ impl Arena {
             pb.inc(1);
             pb.set_message(format!("New wins: {} Past wins: {} Draws: {}", n_wins, p_wins, draws));
         }
+        pb.finish();
         (n_wins, p_wins, draws)
     }
 }
