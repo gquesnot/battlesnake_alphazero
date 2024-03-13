@@ -3,11 +3,11 @@ use std::path::PathBuf;
 use indicatif::ProgressStyle;
 use itertools::{Itertools, multiunzip};
 use ndarray::{arr1, arr2, arr3};
-use tch::{Device, nn, Tensor};
+use tch::{Device, nn, no_grad, Tensor};
 use tch::nn::{Adam, OptimizerConfig};
 
 use crate::canonical_board::CanonicalBoard;
-use crate::config::{BATCH_SIZE, BOARD_SIZE, EPOCHS, LEARNING_RATE};
+use crate::config::{BATCH_SIZE, EPOCHS, LEARNING_RATE};
 use crate::game::Sample;
 use crate::neural_network::NeuralNetwork;
 use crate::utils::AverageMeter;
@@ -99,8 +99,9 @@ impl AlphaZeroModel {
         if get_base_device().is_cuda() {
             tensor_board = tensor_board.contiguous().to_device(get_base_device());
         }
-        tensor_board = tensor_board.view([1, BOARD_SIZE, BOARD_SIZE]);
-        let (pi, v) = self.nnet.forward(&tensor_board, false);
+        let (pi, v) = no_grad(|| {
+            self.nnet.forward(&tensor_board, false)
+        });
         let pi: Vec<f32> = pi.exp().to_device(Device::Cpu).view(-1).try_into().unwrap();
         let value: f32 = v.to_device(Device::Cpu).try_into().unwrap();
         let mut actions: [f32; 4] = [0.0; 4];
