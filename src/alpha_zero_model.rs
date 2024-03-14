@@ -47,7 +47,7 @@ impl AlphaZeroModel {
         pb.set_style(ProgressStyle::default_bar()
             .template("[{elapsed_precise}] [{bar:40.cyan/blue}] {pos:>7}/{len:7} {msg} ({eta})")
             .unwrap()
-            .progress_chars("##-"));
+            .progress_chars("#>-"));
 
         let batch_count = samples.len() / batch_size;
 

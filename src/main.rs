@@ -32,8 +32,13 @@ fn main() {
     let mut model = AlphaZeroModel::default();
 
     if args.load_model {
-        println!("load model from {}", args.model_path.clone());
-        model.load_checkpoint(&PathBuf::from(&args.model_path)).unwrap();
+        let path = PathBuf::from(&args.save_dir).join("best.safetensors");
+        if path.exists() {
+            println!("load model from {}", path.display());
+            model.load_checkpoint(&path).unwrap();
+        } else {
+            println!("No model found at {}", path.display());
+        }
     } else {
         println!("Not loading a checkpoint.");
     }

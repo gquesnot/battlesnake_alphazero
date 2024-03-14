@@ -18,12 +18,12 @@ pub struct Coach {
     mcts: MCTS,
     args: Args,
     skip_first_self_play: bool,
-    examples_handler: ExamplesHandler,
+    pub examples_handler: ExamplesHandler,
 }
 
 impl Coach {
     pub fn new(model: AlphaZeroModel, args: &Args) -> Self {
-        let mut examples_handler = ExamplesHandler::new(args.examples_dir.clone(), args.max_queue_size);
+        let mut examples_handler = ExamplesHandler::new(args.save_dir.clone(), args.max_queue_size);
         if args.load_examples {
             examples_handler.load_examples();
         }
@@ -91,8 +91,8 @@ impl Coach {
             let mut train_examples = self.examples_handler.examples.clone().into_iter().flatten().collect::<Vec<Sample>>();
             train_examples.shuffle(&mut rand::thread_rng());
 
-            self.model.save_checkpoint(&PathBuf::from(&self.args.checkpoint).join("temp.safetensors"))?;
-            self.p_model.load_checkpoint(&PathBuf::from(&self.args.checkpoint).join("temp.safetensors"))?;
+            self.model.save_checkpoint(&PathBuf::from(&self.args.save_dir).join("temp.safetensors"))?;
+            self.p_model.load_checkpoint(&PathBuf::from(&self.args.save_dir).join("temp.safetensors"))?;
 
 
             self.model.train(train_examples, self.args.learning_rate, self.args.num_epochs, self.args.batch_size);
@@ -106,11 +106,11 @@ impl Coach {
 
             if p_wins + n_wins == 0 || (n_wins as f32 / (p_wins + n_wins) as f32) < self.args.update_threshold {
                 println!("REJECTING NEW MODEL");
-                self.model.load_checkpoint(&PathBuf::from(&self.args.checkpoint).join("temp.safetensors"))?;
+                self.model.load_checkpoint(&PathBuf::from(&self.args.save_dir).join("temp.safetensors"))?;
             } else {
                 println!("ACCEPTING NEW MODEL");
-                self.model.save_checkpoint(&PathBuf::from(&self.args.checkpoint).join(self.get_checkpoint_file(iteration)))?;
-                self.model.save_checkpoint(&PathBuf::from(&self.args.checkpoint).join("best.safetensors"))?;
+                self.model.save_checkpoint(&PathBuf::from(&self.args.save_dir).join(self.get_checkpoint_file(iteration)))?;
+                self.model.save_checkpoint(&PathBuf::from(&self.args.save_dir).join("best.safetensors"))?;
             }
         }
         Ok(())

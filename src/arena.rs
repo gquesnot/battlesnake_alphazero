@@ -49,7 +49,7 @@ impl Arena {
         pb.set_style(ProgressStyle::default_bar()
             .template("[{elapsed_precise}] {bar:40.cyan/blue} {pos:>7}/{len:7} {msg} ({eta})")
             .unwrap()
-            .progress_chars("##-"));
+            .progress_chars("#>-"));
         for _ in 0..num {
             let game_result = self.play_game();
             if game_result == 1.0 {

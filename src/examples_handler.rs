@@ -44,18 +44,20 @@ impl ExamplesHandler {
 
 
     pub fn load_examples(&mut self) {
-        print!("Loading examples...");
+        print!("Loading examples");
         self.examples = vec![];
         self.loaded_indexes = vec![];
         let mut reversed_index = self.base_indexes.clone();
         reversed_index.reverse();
-        for index in reversed_index.into_iter().take(self.max_examples) {
+        let mut to_load_indexes= reversed_index.into_iter().take(self.max_examples).collect::<Vec<usize>>();
+        to_load_indexes.reverse();
+        for index in to_load_indexes {
             self.loaded_indexes.push(index);
             let file = File::open(&self.root_path.join(format!("examples_{}", index))).unwrap();
             let reader = BufReader::new(file);
             self.examples.push(bincode::deserialize_from(reader).unwrap());
         }
-        println!("\rExamples Loaded");
+        println!("\rExamples Loaded   ");
     }
 
 
@@ -66,7 +68,7 @@ impl ExamplesHandler {
         };
         print!("Saving example {}...", new_index);
         let file = File::create(self.root_path.join(format!("examples_{}", new_index))).unwrap();
-        println!("\rExample {} saved", new_index);
+        println!("\rExample {} saved    ", new_index);
         bincode::serialize_into(file, &example).unwrap();
         self.examples.push(example);
         self.current_index = Some(new_index);
