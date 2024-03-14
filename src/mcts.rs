@@ -1,6 +1,8 @@
 use std::collections::HashMap;
+use rand::distributions::Distribution;
 
 use rand::seq::SliceRandom;
+use rand_distr::Dirichlet;
 
 use crate::alpha_zero_model::AlphaZeroModel;
 use crate::Args;
@@ -46,7 +48,7 @@ impl MCTS {
     pub fn get_action_prob(&mut self, state: &CanonicalBoard, temp: f32) -> [f32; 4] {
         let current_state = state.reset_and_clone_as_current_player();
         for _ in 0..self.num_mcts_sims {
-            self.search(current_state);
+            self.search(current_state,0);
         }
         let s = current_state.to_hashmap_string();
         let mut counts: [usize; 4] = [0; 4];
@@ -78,7 +80,7 @@ impl MCTS {
         }
     }
 
-    fn search(&mut self, state: CanonicalBoard) -> f32 {
+    fn search(&mut self, state: CanonicalBoard, deep:u8) -> f32 {
         let main_player = state.first_player;
         let s = state.to_hashmap_string();
         if !self.es.contains_key(&s) {
@@ -92,6 +94,17 @@ impl MCTS {
         if !self.ps.contains_key(&s) {
             // leaf node
             let (mut p, v) = self.nnet.predict(&state);
+            if deep == 0{
+                let alpha = 0.3; // Alpha parameter for Dirichlet distribution
+                let noise_ratio = 0.25; // How much noise to mix in with the original policy
+
+                let dirichlet = Dirichlet::new_with_size(alpha, p.len()).unwrap();
+                let noise = dirichlet.sample(&mut rand::thread_rng());
+
+                for i in 0..p.len() {
+                    p[i] = p[i] * (1.0 - noise_ratio) + noise[i] * noise_ratio;
+                }
+            }
             let valid_moves = state.get_valid_moves();
             p.iter_mut().enumerate().for_each(|(i, pi)| {
                 if !valid_moves[i] {
@@ -141,7 +154,7 @@ impl MCTS {
         let a = best_act as usize;
         let key = (s.clone(), a);
         let (next_s, _) = state.get_next_state(a);
-        let v = self.search(next_s);
+        let v = self.search(next_s,deep+1);
         if self.nsa.contains_key(&key) {
             self.qsa.insert((s.clone(), a), (self.nsa[&key] as f32 * self.qsa[&key] + v) / (self.nsa[&key] + 1) as f32);
             self.nsa.insert((s.clone(), a), self.nsa[&key] + 1);

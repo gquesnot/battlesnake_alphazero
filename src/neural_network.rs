@@ -25,18 +25,18 @@ pub struct NeuralNetwork {
 }
 
 impl NeuralNetwork {
-    pub(crate) fn new(vs: &nn::Path) -> NeuralNetwork {
-        let conv1 = nn::conv2d(vs, 1, NUM_CHANNELS, 3, ConvConfig { stride: 1, padding: 1, ..Default::default() });
-        let conv2 = nn::conv2d(vs, NUM_CHANNELS, NUM_CHANNELS, 3, ConvConfig { stride: 1, padding: 1, ..Default::default() });
-        let conv3 = nn::conv2d(vs, NUM_CHANNELS, NUM_CHANNELS, 3, ConvConfig { stride: 1, ..Default::default() });
-        let conv4 = nn::conv2d(vs, NUM_CHANNELS, NUM_CHANNELS, 3, ConvConfig { stride: 1, ..Default::default() });
+    pub(crate) fn new(vs: &nn::Path, num_channels:i64) -> NeuralNetwork {
+        let conv1 = nn::conv2d(vs, 1, num_channels, 3, ConvConfig { stride: 1, padding: 1, ..Default::default() });
+        let conv2 = nn::conv2d(vs, num_channels, num_channels, 3, ConvConfig { stride: 1, padding: 1, ..Default::default() });
+        let conv3 = nn::conv2d(vs, num_channels, num_channels, 3, ConvConfig { stride: 1, ..Default::default() });
+        let conv4 = nn::conv2d(vs, num_channels, num_channels, 3, ConvConfig { stride: 1, ..Default::default() });
 
-        let bn1 = nn::batch_norm2d(vs, NUM_CHANNELS, Default::default());
-        let bn2 = nn::batch_norm2d(vs, NUM_CHANNELS, Default::default());
-        let bn3 = nn::batch_norm2d(vs, NUM_CHANNELS, Default::default());
-        let bn4 = nn::batch_norm2d(vs, NUM_CHANNELS, Default::default());
+        let bn1 = nn::batch_norm2d(vs, num_channels, Default::default());
+        let bn2 = nn::batch_norm2d(vs, num_channels, Default::default());
+        let bn3 = nn::batch_norm2d(vs, num_channels, Default::default());
+        let bn4 = nn::batch_norm2d(vs, num_channels, Default::default());
 
-        let fc1 = nn::linear(vs, NUM_CHANNELS * (BOARD_SIZE - 4) * (BOARD_SIZE - 4), 1024, Default::default());
+        let fc1 = nn::linear(vs, num_channels * (BOARD_SIZE - 4) * (BOARD_SIZE - 4), 1024, Default::default());
         let fc1_bn = nn::batch_norm1d(vs, 1024, Default::default());
 
         let fc2 = nn::linear(vs, 1024, 512, Default::default());

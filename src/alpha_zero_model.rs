@@ -7,6 +7,7 @@ use tch::{Device, nn, no_grad, Tensor};
 use tch::nn::{Adam, OptimizerConfig};
 
 use crate::canonical_board::CanonicalBoard;
+use crate::config::NUM_CHANNELS;
 use crate::game::Sample;
 use crate::neural_network::NeuralNetwork;
 use crate::utils::AverageMeter;
@@ -26,16 +27,18 @@ pub type SampleZipped = (Vec<[[f32; 11]; 11]>, Vec<[f32; 4]>, Vec<f32>);
 pub struct AlphaZeroModel {
     vs: nn::VarStore,
     nnet: NeuralNetwork,
+    num_channels: i64,
 }
 
 
 impl AlphaZeroModel {
-    pub fn new() -> Self {
+    pub fn new(num_channels:i64) -> Self {
         let vs = get_base_var_store();
-        let nnet = NeuralNetwork::new(&vs.root());
+        let nnet = NeuralNetwork::new(&vs.root(),num_channels);
         Self {
             vs,
             nnet,
+            num_channels,
         }
     }
 
@@ -143,16 +146,17 @@ impl Clone for AlphaZeroModel {
         let mut vs = get_base_var_store();
         vs.copy(&self.vs).unwrap();
         vs.trainable_variables();
-        let nnet = NeuralNetwork::new(&vs.root());
+        let nnet = NeuralNetwork::new(&vs.root(), self.num_channels);
         Self {
             vs,
             nnet,
+            num_channels: self.num_channels,
         }
     }
 }
 
 impl Default for AlphaZeroModel {
     fn default() -> Self {
-        Self::new()
+        Self::new(NUM_CHANNELS)
     }
 }

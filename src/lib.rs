@@ -71,6 +71,9 @@ pub struct Args {
     #[arg(long)]
     pub vs_normal_mcts: Option<usize>,
 
+    #[arg(long, default_value_t = 512i64)]
+    pub num_channels: i64,
+
 }
 
 

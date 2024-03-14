@@ -4,7 +4,7 @@ use itertools::Itertools;
 
 use crate::game::{Board, BoardInit, CanCanonical};
 use crate::mcts::MCTS;
-use crate::normal_mcts::{best_node_from_mcts, mcts, mcts_parallel, MCTSNode};
+use crate::normal_mcts::{ mcts_parallel, MCTSNode};
 
 pub struct Arena {
     n_player: MCTS,

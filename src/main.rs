@@ -31,7 +31,7 @@ pub fn print_board(board: &[[f32; 11]; 11]) {
 
 fn main() {
     let args = Args::parse();
-    let mut model = AlphaZeroModel::default();
+    let mut model = AlphaZeroModel::new(args.num_channels);
     let save_dir = PathBuf::from(&args.save_dir);
     if !save_dir.exists() {
         std::fs::create_dir_all(&save_dir).unwrap();
@@ -50,7 +50,7 @@ fn main() {
     }
     if let Some(vs_model_path) = &args.vs_model_path {
         let path = PathBuf::from(&vs_model_path);
-        let mut other_model = AlphaZeroModel::default();
+        let mut other_model = AlphaZeroModel::new(args.num_channels);
         if path.exists() {
             println!("load vs model from {}", path.display());
             other_model.load_checkpoint(&path).unwrap();

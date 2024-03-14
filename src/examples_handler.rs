@@ -45,21 +45,20 @@ impl ExamplesHandler {
 
 
     pub fn load_examples(&mut self) {
-        print!("Loading examples");
         self.examples = vec![];
         self.loaded_indexes = vec![];
         let mut reversed_index = self.base_indexes.clone();
         reversed_index.reverse();
         let mut to_load_indexes= reversed_index.into_iter().take(self.max_examples).collect::<Vec<usize>>();
         to_load_indexes.reverse();
-        println!("Loading examples {:?}", to_load_indexes);
-        for index in to_load_indexes {
-            self.loaded_indexes.push(index);
+        print!("Loading examples {:?}", to_load_indexes);
+        for index in &to_load_indexes {
+            self.loaded_indexes.push(*index);
             let file = File::open(&self.root_path.join(format!("examples_{}", index))).unwrap();
             let reader = BufReader::new(file);
             self.examples.push(bincode::deserialize_from(reader).unwrap());
         }
-        println!("\rExamples Loaded   ");
+        println!("{}{}", "\rExamples Loaded", " ".repeat(to_load_indexes.len()));
     }
 
 

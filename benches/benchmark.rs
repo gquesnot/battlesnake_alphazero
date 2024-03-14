@@ -1,16 +1,14 @@
 use criterion::{black_box, Criterion, criterion_group, criterion_main};
+
 use battlesnake_alphazero::alpha_zero_model::AlphaZeroModel;
 use battlesnake_alphazero::Args;
 use battlesnake_alphazero::canonical_board::{CanonicalBoard, flip_board_horizontal, rotate_board, rotate_policy};
-
 use battlesnake_alphazero::game::{Board, BoardInit, CanCanonical};
 use battlesnake_alphazero::mcts::MCTS;
 
 pub fn get_canonical_board() -> CanonicalBoard {
     Board::init_start_of_game_board().as_canonical(1)
-
 }
-
 
 
 pub fn bench_generate_random_board(c: &mut Criterion) {
@@ -59,9 +57,6 @@ pub fn bench_canonical_board_mirroring_and_rotation(c: &mut Criterion) {
 }
 
 
-
-
-
 pub fn bench_rotate_array_board(c: &mut Criterion) {
     let canonical_board = get_canonical_board();
     let array_board = canonical_board.to_array_board();
@@ -77,8 +72,6 @@ pub fn bench_flip_horizontal_array_board(c: &mut Criterion) {
         flip_board_horizontal(black_box(&array_board));
     }));
 }
-
-
 
 
 pub fn bench_rotate_policy(c: &mut Criterion) {
@@ -120,16 +113,16 @@ pub fn bench_alphazero_get_action_probs(c: &mut Criterion) {
 
 criterion_group!(
     benches,
-    // bench_generate_random_board,
-    // bench_canonical_board_to_tensor,
-     //bench_canonical_board_get_next_state,
-    //  bench_canonical_board_to_array_board,
-     //bench_canonical_board_to_hashmap_string,
-    //  bench_canonical_board_mirroring_and_rotation,
-    //  bench_rotate_array_board,
-    // bench_flip_horizontal_array_board,
-    //  bench_rotate_policy,
-    bench_mcts,
-    //bench_alphazero_get_action_probs,
+    bench_generate_random_board,
+    bench_canonical_board_to_tensor,
+     bench_canonical_board_get_next_state,
+     bench_canonical_board_to_array_board,
+     bench_canonical_board_to_hashmap_string,
+     bench_canonical_board_mirroring_and_rotation,
+     //bench_rotate_array_board,
+    //bench_flip_horizontal_array_board,
+     //bench_rotate_policy,
+    //bench_mcts,
+    bench_alphazero_get_action_probs,
 );
 criterion_main!(benches);
