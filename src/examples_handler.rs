@@ -32,7 +32,7 @@ impl ExamplesHandler {
             }
         }
         indexes.sort();
-        println!("Found indexes {:?}", indexes);
+        println!("Found Examples {:?}", indexes);
         ExamplesHandler {
             root_path,
             max_examples,
