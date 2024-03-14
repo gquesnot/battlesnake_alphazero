@@ -32,6 +32,7 @@ impl ExamplesHandler {
             }
         }
         indexes.sort();
+        println!("Found indexes {:?}", indexes);
         ExamplesHandler {
             root_path,
             max_examples,
@@ -51,6 +52,7 @@ impl ExamplesHandler {
         reversed_index.reverse();
         let mut to_load_indexes= reversed_index.into_iter().take(self.max_examples).collect::<Vec<usize>>();
         to_load_indexes.reverse();
+        println!("Loading examples {:?}", to_load_indexes);
         for index in to_load_indexes {
             self.loaded_indexes.push(index);
             let file = File::open(&self.root_path.join(format!("examples_{}", index))).unwrap();
