@@ -17,10 +17,10 @@ pub mod normal_mcts;
 #[derive(Parser, Debug, Clone, Default)]
 #[clap(name = "battlesnake alphazero", version = "2.0", author = "Canarit")]
 pub struct Args {
-    #[arg(long, default_value_t = 300)]
+    #[arg(long, default_value_t = 20)]
     pub num_iterations: i32,
 
-    #[arg(long, default_value_t = 0.002_f64)]
+    #[arg(long, default_value_t = 0.001_f64)]
     pub learning_rate: f64,
 
     #[arg(long, default_value_t = 64_usize)]
@@ -35,13 +35,13 @@ pub struct Args {
     #[arg(long, default_value_t = 200000_usize)]
     pub max_queue_size: usize,
 
-    #[arg(long, default_value_t = 15)]
+    #[arg(long, default_value_t = 30)]
     pub temp_threshold: i32,
 
-    #[arg(long, default_value_t = 0.55_f32)]
+    #[arg(long, default_value_t = 0.6_f32)]
     pub update_threshold: f32,
 
-    #[arg(long, default_value_t = 25)]
+    #[arg(long, default_value_t = 100)]
     pub num_mcts_sims: i32,
 
     #[arg(long, default_value_t = 40)]
@@ -62,7 +62,7 @@ pub struct Args {
     pub load_examples: bool,
 
 
-    #[arg(long, default_value_t = 20_usize)]
+    #[arg(long, default_value_t = 10_usize)]
     pub num_iters_for_train_examples_history: usize,
 
     #[arg(long)]
