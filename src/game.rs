@@ -204,8 +204,8 @@ impl BoardInit for Board {
 }
 
 impl CanCanonical for Board {
-    fn as_canonical(&self, player: i32, min_heal_threshold:u8) -> CanonicalBoard {
-        CanonicalBoard::new(*self, player, None, min_heal_threshold)
+    fn as_canonical(&self, player: i32, min_health_threshold:u8) -> CanonicalBoard {
+        CanonicalBoard::new(*self, player, None, min_health_threshold)
     }
 }
 

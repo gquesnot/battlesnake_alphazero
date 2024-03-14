@@ -5,7 +5,6 @@ use rand::seq::SliceRandom;
 use rand_distr::Dirichlet;
 
 use crate::alpha_zero_model::AlphaZeroModel;
-use crate::Args;
 use crate::canonical_board::CanonicalBoard;
 use crate::config::{ACTION_SIZE, EPS};
 
@@ -28,10 +27,11 @@ pub struct MCTS {
     // valid moves
     c_puct: f32,
     num_mcts_sims: i32,
+    pub max_deep: i32,
 }
 
 impl MCTS {
-    pub fn new(nnet: &AlphaZeroModel, args: Args) -> Self {
+    pub fn new(nnet: &AlphaZeroModel, c_puct:f32, num_mcts_sims:i32) -> Self {
         MCTS {
             nnet: nnet.clone(),
             qsa: HashMap::new(),
@@ -40,8 +40,9 @@ impl MCTS {
             ps: HashMap::new(),
             es: HashMap::new(),
             vs: HashMap::new(),
-            c_puct:args.c_puct,
-            num_mcts_sims: args.num_mcts_sims,
+            c_puct,
+            num_mcts_sims,
+            max_deep:0
         }
     }
 
@@ -80,8 +81,11 @@ impl MCTS {
         }
     }
 
-    fn search(&mut self, state: CanonicalBoard, deep:u8) -> f32 {
+    fn search(&mut self, state: CanonicalBoard, deep:i32) -> f32 {
         let main_player = state.first_player;
+        if self.max_deep < deep{
+            self.max_deep = deep;
+        }
         let s = state.to_hashmap_string();
         let game_ended = self.es.entry(s.clone()).or_insert_with(|| state.get_game_ended(main_player));
         if *game_ended != 0.0 {

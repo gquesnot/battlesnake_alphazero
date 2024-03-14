@@ -31,7 +31,7 @@ impl Coach {
         Self {
             model: model.clone(),
             p_model: model.clone(),
-            mcts: MCTS::new(&model, args.clone()),
+            mcts: MCTS::new(&model, args.c_puct, args.num_mcts_sims),
             args: args.clone(),
             skip_first_self_play: args.load_examples,
             examples_handler,
@@ -80,7 +80,7 @@ impl Coach {
                     .progress_chars("#>-"));
                 let mut sum_episodes_length = 0f32;
                 for _ in 0..self.args.num_episodes {
-                    self.mcts = MCTS::new(&self.model, self.args.clone());
+                    self.mcts = MCTS::new(&self.model, self.args.c_puct, self.args.num_mcts_sims);
                     let temp_examples = self.execute_episode();
                     sum_episodes_length += temp_examples.len() as f32  /16f32 ;
                     train_examples.append(temp_examples);
@@ -101,8 +101,8 @@ impl Coach {
 
             self.model.train(train_examples, self.args.learning_rate, self.args.num_epochs, self.args.batch_size);
 
-            let mcts = MCTS::new(&self.model, self.args.clone());
-            let p_mcts = MCTS::new(&self.p_model, self.args.clone());
+            let mcts = MCTS::new(&self.model,  self.args.c_puct, self.args.num_mcts_sims);
+            let p_mcts = MCTS::new(&self.p_model,  self.args.c_puct, self.args.num_mcts_sims);
 
             let mut arena = Arena::new(mcts, Some(p_mcts), self.args.min_health_threshold);
             let (n_wins, p_wins, draws) = arena.play_games(self.args.arena_compare);

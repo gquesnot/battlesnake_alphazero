@@ -29,10 +29,13 @@ pub fn print_board(board: &[[f32; 11]; 11]) {
     println!();
 }
 
+
+
 fn main() {
     let args = Args::parse();
-
     let mut model = AlphaZeroModel::new(args.num_channels);
+
+
     let save_dir = PathBuf::from(&args.save_dir);
     if !save_dir.exists() {
         std::fs::create_dir_all(&save_dir).unwrap();
@@ -58,13 +61,13 @@ fn main() {
         } else {
             println!("No model found at {}", path.display());
         }
-        let model_mcts = MCTS::new(&model, args.clone());
-        let other_model_mcts = MCTS::new(&other_model, args.clone());
+        let model_mcts = MCTS::new(&model, args.c_puct, args.num_mcts_sims);
+        let other_model_mcts = MCTS::new(&other_model, args.c_puct, args.num_mcts_sims);
         let mut arena = Arena::new(model_mcts, Some(other_model_mcts), args.min_health_threshold);
         let (model_wins, other_model_wins, draws) = arena.play_games(args.arena_compare);
         println!("Model Wins: {}, Other Model Wins: {}, Draws: {}", model_wins, other_model_wins, draws);
     }else if let Some(vs_normal_mcts) = &args.vs_normal_mcts{
-        let model_mcts = MCTS::new(&model, args.clone());
+        let model_mcts = MCTS::new(&model, args.c_puct, args.num_mcts_sims);
         let mut arena = Arena::new(model_mcts, None, args.min_health_threshold);
         let (model_wins, other_model_wins, draws) = arena.play_games_vs_normal_mcts(args.arena_compare, *vs_normal_mcts);
         println!("Model Wins: {}, MCTS({}) Wins: {}, Draws: {}", model_wins, *vs_normal_mcts,other_model_wins, draws);

@@ -35,19 +35,19 @@ pub struct Args {
     #[arg(long, default_value_t = 200000_usize)]
     pub max_queue_size: usize,
 
-    #[arg(long, default_value_t = 30)]
+    #[arg(long, default_value_t = 15)]
     pub temp_threshold: i32,
 
     #[arg(long, default_value_t = 0.6_f32)]
     pub update_threshold: f32,
 
-    #[arg(long, default_value_t = 100)]
+    #[arg(long, default_value_t = 400)]
     pub num_mcts_sims: i32,
 
     #[arg(long, default_value_t = 40)]
     pub arena_compare: i32,
 
-    #[arg(long, default_value_t = 1.0_f32)]
+    #[arg(long, default_value_t = 4.0_f32)]
     pub c_puct: f32,
 
     #[arg(long, default_value_t = String::from("./temp"))]
