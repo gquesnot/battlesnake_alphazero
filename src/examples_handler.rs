@@ -37,7 +37,7 @@ impl ExamplesHandler {
             root_path,
             max_examples,
             current_index: indexes.last().cloned(),
-            base_indexes: vec![],
+            base_indexes: indexes,
             examples: vec![],
             loaded_indexes: vec![],
         }
