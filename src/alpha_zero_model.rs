@@ -69,7 +69,7 @@ impl AlphaZeroModel {
                     target_vs = target_vs.to_device(get_base_device());
                 }
 
-                let (out_pi, out_v) = self.nnet.forward(&s, true);
+                let (out_pi, out_v) = self.nnet.forward(&s, true, self.num_channels);
                 //println!("Out Pi: {:?}", out_pi.size());
                 //println!("Out V: {:?}", out_v.size());
                 let l_pi = self.loss_pi(&target_pis, &out_pi);
@@ -102,7 +102,7 @@ impl AlphaZeroModel {
             tensor_board = tensor_board.contiguous().to_device(get_base_device());
         }
         let (pi, v) = no_grad(|| {
-            self.nnet.forward(&tensor_board, false)
+            self.nnet.forward(&tensor_board, false, self.num_channels)
         });
         let pi: Vec<f32> = pi.exp().to_device(Device::Cpu).view(-1).try_into().unwrap();
         let value: f32 = v.to_device(Device::Cpu).try_into().unwrap();

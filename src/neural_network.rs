@@ -63,7 +63,7 @@ impl NeuralNetwork {
         }
     }
 
-    pub fn forward(&self, input: &tch::Tensor, is_training: bool) -> (tch::Tensor, tch::Tensor) {
+    pub fn forward(&self, input: &tch::Tensor, is_training: bool, num_channels:i64) -> (tch::Tensor, tch::Tensor) {
         let x = input.view([-1, 1, BOARD_SIZE, BOARD_SIZE])
             .apply(&self.conv1)
             .apply_t(&self.bn1, false)
@@ -77,7 +77,7 @@ impl NeuralNetwork {
             .apply(&self.conv4)
             .apply_t(&self.bn4, false)
             .relu()
-            .view([-1, NUM_CHANNELS * (BOARD_SIZE - 4) * (BOARD_SIZE - 4)])
+            .view([-1, num_channels * (BOARD_SIZE - 4) * (BOARD_SIZE - 4)])
             .apply(&self.fc1)
             .apply_t(&self.fc1_bn, false)
             .relu()
