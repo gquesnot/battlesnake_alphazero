@@ -33,7 +33,7 @@ impl Coach {
             p_model: model.clone(),
             mcts: MCTS::new(&model, args.clone()),
             args: args.clone(),
-            skip_first_self_play: false,
+            skip_first_self_play: args.load_examples,
             examples_handler,
         }
     }
