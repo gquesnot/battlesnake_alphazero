@@ -74,6 +74,13 @@ pub struct Args {
     #[arg(long, default_value_t = 512i64)]
     pub num_channels: i64,
 
+    // 100 - 85 => 2.25food/20round
+    // 100 - 80 => 3food/20round
+    // 100 - 75 => 3.75food/20round
+    // 100 - 70 => 4.5food/20round
+    #[arg(long, default_value_t = 80)]
+    pub min_health_threshold: u8,
+
 }
 
 

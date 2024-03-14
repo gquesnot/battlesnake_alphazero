@@ -9,13 +9,15 @@ use crate::normal_mcts::{ mcts_parallel, MCTSNode};
 pub struct Arena {
     n_player: MCTS,
     p_player: Option<MCTS>,
+    min_health_threshold:u8
 }
 
 impl Arena {
-    pub fn new(n_player: MCTS, p_player: Option<MCTS>) -> Arena {
+    pub fn new(n_player: MCTS, p_player: Option<MCTS>, health_kill_threshold:u8) -> Arena {
         Arena {
             n_player,
             p_player,
+            min_health_threshold: health_kill_threshold,
         }
     }
 
@@ -24,7 +26,7 @@ impl Arena {
         if let Some(ref mut p_player) = &mut self.p_player{
             let board = Board::init_random_board();
             let mut current_player = 1;
-            let mut canonical_board = board.as_canonical(current_player);
+            let mut canonical_board = board.as_canonical(current_player, self.min_health_threshold);
             loop {
                 let value = canonical_board.get_game_ended(1);
                 if value != 0.0 {
@@ -40,7 +42,7 @@ impl Arena {
                 if !valid_moves[best_action_index] {
                     best_action_index = 0;
                 }
-                (canonical_board, current_player) = canonical_board.get_next_state(best_action_index);
+                (canonical_board, current_player) = canonical_board.get_next_state(best_action_index, false);
             }
         }
         0.0
@@ -104,7 +106,7 @@ impl Arena {
     pub fn play_game_vs_normal_mcts(&mut self, num_mcts_iterations:usize) -> f32 {
         let board = Board::init_random_board();
         let mut current_player = 1;
-        let mut canonical_board = board.as_canonical(current_player);
+        let mut canonical_board = board.as_canonical(current_player, self.min_health_threshold);
         println!("{}",canonical_board.board);
 
         let mut iter = 0;
@@ -135,7 +137,7 @@ impl Arena {
                 best_action_index = 0;
             }
             temp_moves.push(best_action_index);
-            (canonical_board, current_player) = canonical_board.get_next_state(best_action_index);
+            (canonical_board, current_player) = canonical_board.get_next_state(best_action_index, false);
             if iter%2 == 1{
                 println!("Moves: {:?}",temp_moves.iter().map(|x| Move::from_index(*x)).collect_vec());
                 println!("{}",canonical_board.board);

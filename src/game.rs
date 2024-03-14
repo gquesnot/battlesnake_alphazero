@@ -1,7 +1,7 @@
 use std::collections::VecDeque;
 
 use battlesnake_game_types::compact_representation::StandardCellBoard4Snakes11x11;
-use battlesnake_game_types::types::{build_snake_id_map, Move, ReasonableMovesGame, SimulableGame, SimulatorInstruments, SnakeId, StandardFoodPlaceableGame};
+use battlesnake_game_types::types::{build_snake_id_map, FoodGettableGame, Move, ReasonableMovesGame, SimulableGame, SimulatorInstruments, SnakeId, StandardFoodPlaceableGame};
 use battlesnake_game_types::wire_representation::{BattleSnake, NestedGame, Position, Ruleset};
 use itertools::Itertools;
 use rand::prelude::SliceRandom;
@@ -37,13 +37,13 @@ pub trait BoardInit {
 }
 
 pub trait CanCanonical {
-    fn as_canonical(&self, player: i32) -> CanonicalBoard;
+    fn as_canonical(&self, player: i32, min_health_threshold:u8) -> CanonicalBoard;
 }
 
 pub trait MoveBattleSnake {
     fn get_available_moves(&self) -> Vec<[Move; 2]>;
 
-    fn simulate_moves(&self, moves: &[Move; 2]) -> Board;
+    fn simulate_moves(&self, moves: &[Move; 2], in_mcts:bool) -> Board;
 }
 
 
@@ -57,16 +57,18 @@ impl MoveBattleSnake for Board {
             .collect()
     }
 
-    fn simulate_moves(&self, moves: &[Move; 2]) -> Board
+    fn simulate_moves(&self, moves: &[Move; 2], in_mcts:bool) -> Board
     {
         let new_state = *self;
         let formatted_moves = moves.iter().enumerate().map(|(idx, &mv)| (SnakeId(idx as u8), [mv])).collect_vec();
         let mut simulated_moves = new_state.simulate_with_moves(&Instruments {}, formatted_moves);
         let mut next_state = simulated_moves.next().unwrap().1;
-        let mut rng = rand::thread_rng();
-        // rng 25% of the time
-        if rng.gen_range(0..4) == 0 {
-            next_state.place_food(&mut rng);
+        if !in_mcts{
+            let mut rng = &mut rand::thread_rng();
+            if next_state.get_all_food_as_native_positions().is_empty() || rng.gen_range(0..20) < 3 {
+                next_state.place_food(&mut rng);
+            }
+
         }
         next_state
     }
@@ -149,14 +151,14 @@ impl BoardInit for Board {
         let player_1 = BattleSnake {
             id: "gs_YkwKKSmYwqFFgDk9BycMvWf8".to_string(),
             name: "player0".to_string(),
-            health: 99,
+            health: 100,
             body: player_1_body,
             head: player_1_head,
             actual_length: Some(3),
             shout: None,
         };
 
-        let game = battlesnake_game_types::wire_representation::Game {
+        let  game = battlesnake_game_types::wire_representation::Game {
             turn: 1,
             board: battlesnake_game_types::wire_representation::Board {
                 height: 11,
@@ -167,7 +169,7 @@ impl BoardInit for Board {
                     BattleSnake {
                         id: "gs_vbvwfwk6jBc4jmCrKCbdJh3G".to_string(),
                         name: "player1".to_string(),
-                        health: 99,
+                        health: 100,
                         body: player_2_body,
                         head: player_2_head,
                         actual_length: Some(3),
@@ -202,8 +204,8 @@ impl BoardInit for Board {
 }
 
 impl CanCanonical for Board {
-    fn as_canonical(&self, player: i32) -> CanonicalBoard {
-        CanonicalBoard::new(*self, player, None)
+    fn as_canonical(&self, player: i32, min_heal_threshold:u8) -> CanonicalBoard {
+        CanonicalBoard::new(*self, player, None, min_heal_threshold)
     }
 }
 

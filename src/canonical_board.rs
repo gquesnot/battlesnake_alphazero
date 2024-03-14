@@ -1,3 +1,4 @@
+
 use battlesnake_game_types::types::{FoodGettableGame, HeadGettableGame, HealthGettableGame, Move, ReasonableMovesGame, SnakeBodyGettableGame, SnakeId, VictorDeterminableGame};
 use battlesnake_game_types::wire_representation::Position;
 use itertools::Itertools;
@@ -68,16 +69,20 @@ pub struct CanonicalBoard {
     pub board: Board,
     pub first_player: i32,
     pub prev_action: Option<Move>,
+    pub min_health_threshold: u8,
 }
 
 impl CanonicalBoard {
-    pub fn new(board: Board, first_player: i32, prev_action: Option<Move>) -> Self {
+    pub fn new(board: Board, first_player: i32, prev_action: Option<Move>, health_kill_threshold:u8) -> Self {
         CanonicalBoard {
             board,
             first_player,
             prev_action,
+            min_health_threshold: health_kill_threshold
         }
     }
+
+
 
     pub fn to_tensor(&self) -> Tensor {
         let (board_size_x, board_size_y) = (11, 11); // Assuming a fixed board size, adjust if necessary
@@ -176,38 +181,52 @@ impl CanonicalBoard {
     pub fn to_hashmap_string(&self) -> String {
         let (self_head, self_body, other_head, other_body, foods) = self.get_info_for_repr();
         let board_size = BOARD_SIZE as usize;
-        let mut result = vec!['0'; board_size * board_size];  // Pre-fill the string with '0'
+        let mut array_string = vec!['a'; board_size * board_size];  // Pre-fill the string with '0'
 
         // Inline function to reduce code duplication
         let mut set_position = |x: usize, y: usize, ch: char| {
-            result[x + (board_size - 1 - y) * board_size] = ch;
+            array_string[x + (board_size - 1 - y) * board_size] = ch;
         };
 
         if let Some(self_head) = self_head {
-            set_position(self_head.x as usize, self_head.y as usize, '1');
+            set_position(self_head.x as usize, self_head.y as usize, 'b');
             if let Some(self_body) = self_body {
                 for body in self_body {
                     if body == self_head {
                         continue;
                     }
-                    set_position(body.x as usize, body.y as usize, '2');
+                    set_position(body.x as usize, body.y as usize, 'c');
                 }
             }
         }
 
         if let Some(other_head) = other_head {
-            set_position(other_head.x as usize, other_head.y as usize, '3');
+            set_position(other_head.x as usize, other_head.y as usize, 'd');
             if let Some(other_body) = other_body {
                 for body in other_body {
                     if body == other_head {
                         continue;
                     }
-                    set_position(body.x as usize, body.y as usize, '4');
+                    set_position(body.x as usize, body.y as usize, 'e');
                 }
             }
         }
-        foods.iter().for_each(|food| set_position(food.x as usize, food.y as usize, '5'));
-        result.into_iter().collect()
+        foods.iter().for_each(|food| set_position(food.x as usize, food.y as usize, 'f'));
+        let mut compressed_string = String::new();
+        let mut last_char = array_string[0];
+        let mut count = 1;
+        for &current_char in &array_string[1..] {
+            if current_char == last_char {
+                count += 1;
+            } else {
+                compressed_string.push_str(&format!("{}{}", last_char, count));
+                last_char = current_char;
+                count = 1;
+            }
+        }
+
+        compressed_string.push_str(&format!("{}{}", last_char, count));
+        compressed_string
     }
 
 
@@ -237,8 +256,20 @@ impl CanonicalBoard {
 
 
     pub fn get_game_ended(&self, player_id: i32) -> f32 {
-        if self.board.is_over() {
-            match self.board.get_winner() {
+        let mut is_over = self.board.is_over();
+        let mut winner = self.board.get_winner();
+        if !is_over{
+            let snake_0_is_dead = self.board.get_health(&SnakeId(0))<= self.min_health_threshold;
+            let snake_1_is_dead = self.board.get_health(&SnakeId(1))<= self.min_health_threshold;
+            if snake_0_is_dead || snake_1_is_dead{
+                is_over = true;
+                winner = if snake_0_is_dead && snake_1_is_dead{ None }
+                else if  snake_0_is_dead { Some(SnakeId(1)) }
+                else { Some(SnakeId(0)) };
+            }
+        }
+        if is_over {
+            match winner {
                 None => {
                     1e-4
                 }
@@ -276,9 +307,9 @@ impl CanonicalBoard {
         (self_head, self_body, other_head, other_body, foods)
     }
 
-    pub fn get_next_state(&self, action: usize) -> (CanonicalBoard, i32) {
+    pub fn get_next_state(&self, action: usize, in_mcts:bool) -> (CanonicalBoard, i32) {
         let action = Move::from_index(action);
-        let next_board = self.play_action(action);
+        let next_board = self.play_action(action,in_mcts);
         let next_player = next_board.get_current_player();
         (next_board, next_player)
     }
@@ -297,15 +328,15 @@ impl CanonicalBoard {
     }
 
 
-    pub fn play_action(&self, action: Move) -> CanonicalBoard {
+    pub fn play_action(&self, action: Move,in_mcts:bool) -> CanonicalBoard {
         if let Some(prev_action) = self.prev_action {
             let actions = if self.first_player == 1 {
                 [prev_action, action]
             } else {
                 [action, prev_action]
             };
-            let next_board = self.board.simulate_moves(&actions);
-            CanonicalBoard::new(next_board, self.first_player, None)
+            let next_board = self.board.simulate_moves(&actions, in_mcts);
+            CanonicalBoard::new(next_board, self.first_player, None, self.min_health_threshold)
         } else {
             let mut new_state = *self;
             new_state.prev_action = Some(action);

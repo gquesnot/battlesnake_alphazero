@@ -58,7 +58,7 @@ impl ExamplesHandler {
             let reader = BufReader::new(file);
             self.examples.push(bincode::deserialize_from(reader).unwrap());
         }
-        println!("{}{}", "\rExamples Loaded", " ".repeat(to_load_indexes.len()));
+        println!("\rExamples Loaded{}", " ".repeat(to_load_indexes.len()));
     }
 
 

@@ -42,7 +42,7 @@ impl Coach {
         let mut train_examples: Vec<([[f32; 11]; 11], [f32; 4], i32)> = Vec::new();
         let board = Board::init_random_board();
         let mut current_player = 1;
-        let mut canonical_board = board.as_canonical(current_player);
+        let mut canonical_board = board.as_canonical(current_player, self.args.min_health_threshold);
         let mut episode_step = 0;
         loop {
             episode_step += 1;
@@ -52,7 +52,7 @@ impl Coach {
             train_examples.append(&mut canonical_board.get_mirroring_and_rotation(&pi));
             // chose using the action probabilities of pi
             let action = choose_index_based_on_probability(&pi);
-            (canonical_board, current_player) = canonical_board.get_next_state(action);
+            (canonical_board, current_player) = canonical_board.get_next_state(action,false);
             let value = canonical_board.get_game_ended(current_player);
             if value != 0.0 {
                 return train_examples.into_iter().map(|(s, p, player)| {
@@ -78,12 +78,16 @@ impl Coach {
                     .template("[{elapsed_precise}] [{bar:40.cyan/blue}] {pos:>7}/{len:7} ({eta})")
                     .unwrap()
                     .progress_chars("#>-"));
+                let mut sum_episodes_length = 0f32;
                 for _ in 0..self.args.num_episodes {
                     self.mcts = MCTS::new(&self.model, self.args.clone());
-                    train_examples.append(self.execute_episode());
+                    let temp_examples = self.execute_episode();
+                    sum_episodes_length += temp_examples.len() as f32  /16f32 ;
+                    train_examples.append(temp_examples);
                     pb.inc(1);
                 }
                 pb.finish();
+                println!("AVG MOVE / SNAKE / GAME : {:.2}", sum_episodes_length / self.args.num_episodes as f32);
                 self.examples_handler.save_example(train_examples.deque.into_iter().collect_vec());
             }
 
@@ -91,8 +95,8 @@ impl Coach {
             let mut train_examples = self.examples_handler.examples.clone().into_iter().flatten().collect::<Vec<Sample>>();
             train_examples.shuffle(&mut rand::thread_rng());
 
-            self.model.save_checkpoint(&PathBuf::from(&self.args.save_dir).join("temp.safetensors"))?;
-            self.p_model.load_checkpoint(&PathBuf::from(&self.args.save_dir).join("temp.safetensors"))?;
+            self.model.save_checkpoint(&PathBuf::from(&self.args.save_dir).join("temp.pth.tar"))?;
+            self.p_model.load_checkpoint(&PathBuf::from(&self.args.save_dir).join("temp.pth.tar"))?;
 
 
             self.model.train(train_examples, self.args.learning_rate, self.args.num_epochs, self.args.batch_size);
@@ -100,23 +104,23 @@ impl Coach {
             let mcts = MCTS::new(&self.model, self.args.clone());
             let p_mcts = MCTS::new(&self.p_model, self.args.clone());
 
-            let mut arena = Arena::new(mcts, Some(p_mcts));
+            let mut arena = Arena::new(mcts, Some(p_mcts), self.args.min_health_threshold);
             let (n_wins, p_wins, draws) = arena.play_games(self.args.arena_compare);
             println!("NEW/PREV WINS : {} / {} ; DRAWS : {}", n_wins, p_wins, draws);
 
             if p_wins + n_wins == 0 || (n_wins as f32 / (p_wins + n_wins) as f32) < self.args.update_threshold {
                 println!("REJECTING NEW MODEL");
-                self.model.load_checkpoint(&PathBuf::from(&self.args.save_dir).join("temp.safetensors"))?;
+                self.model.load_checkpoint(&PathBuf::from(&self.args.save_dir).join("temp.pth.tar"))?;
             } else {
                 println!("ACCEPTING NEW MODEL");
                 self.model.save_checkpoint(&PathBuf::from(&self.args.save_dir).join(self.get_checkpoint_file(iteration)))?;
-                self.model.save_checkpoint(&PathBuf::from(&self.args.save_dir).join("best.safetensors"))?;
+                self.model.save_checkpoint(&PathBuf::from(&self.args.save_dir).join("best.pth.tar"))?;
             }
         }
         Ok(())
     }
 
     pub fn get_checkpoint_file(&self, iteration: i32) -> String {
-        format!("checkpoint_{}.safetensors", iteration).to_string()
+        format!("checkpoint_{}.pth.tar", iteration).to_string()
     }
 }

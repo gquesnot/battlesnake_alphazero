@@ -12,7 +12,7 @@ pub fn run_simulation(state: StandardCellBoard4Snakes11x11) -> Option<SnakeId> {
         let chosen_moves = current_state.get_available_moves()
             .into_iter()
             .choose(&mut rng).unwrap();
-        current_state = current_state.simulate_moves(&chosen_moves);
+        current_state = current_state.simulate_moves(&chosen_moves, true);
     }
     current_state.get_winner()
 }
@@ -79,7 +79,7 @@ pub fn mcts(root: MCTSNode, player_id: &SnakeId, iterations: usize) -> Vec<MCTSN
                 .for_each(|(child_index, node_moves)| {
                     tree[node_index].children.push(tree_len + child_index); // Use the precomputed index here
                     let node_moves_2 = node_moves.into_iter().enumerate().map(|(idx, mv)| (SnakeId(idx as u8), mv)).collect();
-                    tree.push(MCTSNode::new(tree[node_index].state.simulate_moves(&node_moves), Some(node_index), Some(node_moves_2), tree[node_index].deep + 1));
+                    tree.push(MCTSNode::new(tree[node_index].state.simulate_moves(&node_moves, true), Some(node_index), Some(node_moves_2), tree[node_index].deep + 1));
                 });
         }
 

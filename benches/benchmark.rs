@@ -20,7 +20,7 @@ pub fn bench_generate_random_board(c: &mut Criterion) {
 pub fn bench_canonical_board_get_next_state(c: &mut Criterion) {
     let canonical_board = get_canonical_board();
     c.bench_function("bench_canonical_board_get_next_state", |b| b.iter(|| {
-        canonical_board.get_next_state(black_box(0));
+        canonical_board.get_next_state(black_box(0), false);
     }));
 }
 
@@ -113,16 +113,16 @@ pub fn bench_alphazero_get_action_probs(c: &mut Criterion) {
 
 criterion_group!(
     benches,
-    bench_generate_random_board,
-    bench_canonical_board_to_tensor,
-     bench_canonical_board_get_next_state,
-     bench_canonical_board_to_array_board,
-     bench_canonical_board_to_hashmap_string,
-     bench_canonical_board_mirroring_and_rotation,
+    // bench_generate_random_board,
+    // bench_canonical_board_to_tensor,
+    //  bench_canonical_board_get_next_state,
+    //  bench_canonical_board_to_array_board,
+      //bench_canonical_board_to_hashmap_string,
+    //  bench_canonical_board_mirroring_and_rotation,
      //bench_rotate_array_board,
     //bench_flip_horizontal_array_board,
      //bench_rotate_policy,
-    //bench_mcts,
-    bench_alphazero_get_action_probs,
+    bench_mcts,
+    //bench_alphazero_get_action_probs,
 );
 criterion_main!(benches);

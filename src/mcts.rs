@@ -83,28 +83,14 @@ impl MCTS {
     fn search(&mut self, state: CanonicalBoard, deep:u8) -> f32 {
         let main_player = state.first_player;
         let s = state.to_hashmap_string();
-        if !self.es.contains_key(&s) {
-            self.es.insert(s.clone(), state.get_game_ended(main_player));
-        }
-        if self.es[&s] != 0.0 {
-            // terminal node
-            return -self.es[&s];
+        let game_ended = self.es.entry(s.clone()).or_insert_with(|| state.get_game_ended(main_player));
+        if *game_ended != 0.0 {
+            return -*game_ended;
         }
 
         if !self.ps.contains_key(&s) {
             // leaf node
             let (mut p, v) = self.nnet.predict(&state);
-            if deep == 0{
-                let alpha = 0.3; // Alpha parameter for Dirichlet distribution
-                let noise_ratio = 0.25; // How much noise to mix in with the original policy
-
-                let dirichlet = Dirichlet::new_with_size(alpha, p.len()).unwrap();
-                let noise = dirichlet.sample(&mut rand::thread_rng());
-
-                for i in 0..p.len() {
-                    p[i] = p[i] * (1.0 - noise_ratio) + noise[i] * noise_ratio;
-                }
-            }
             let valid_moves = state.get_valid_moves();
             p.iter_mut().enumerate().for_each(|(i, pi)| {
                 if !valid_moves[i] {
@@ -127,6 +113,17 @@ impl MCTS {
                 let sum: f32 = p.iter().sum();
                 p.iter_mut().for_each(|pi| *pi /= sum); // renormalize
             }
+            if deep == 0{
+                let alpha = 1.0; // Alpha parameter for Dirichlet distribution
+                let noise_ratio = 0.5; // How much noise to mix in with the original policy
+
+                let dirichlet = Dirichlet::new_with_size(alpha, p.len()).unwrap();
+                let noise = dirichlet.sample(&mut rand::thread_rng());
+
+                for i in 0..p.len() {
+                    p[i] = noise_ratio * p[i] + (1.0 - noise_ratio) * noise[i];
+                }
+            }
             self.ps.insert(s.clone(), p);
             self.vs.insert(s.clone(), valid_moves);
             self.ns.insert(s.clone(), 0);
@@ -136,33 +133,35 @@ impl MCTS {
         let valid_moves = self.vs[&s];
         let mut cur_best = -f32::INFINITY;
         let mut best_act = -1;
-
-        for a in 0..ACTION_SIZE {
-            let key = (s.clone(), a as usize);
-            if valid_moves[a as usize] {
-                let u: f32 = if self.nsa.contains_key(&key) {
-                    self.qsa[&key] + self.c_puct * self.ps[&s][a as usize] * (self.ns[&s] as f32).sqrt() / (1.0 + self.nsa[&key] as f32)
-                } else {
-                    self.c_puct * self.ps[&s][a as usize] * (self.ns[&s] as f32 + EPS).sqrt() // Q = 0 ?
-                };
+        for (a, is_valid) in valid_moves.iter().enumerate().take(ACTION_SIZE as usize){
+            if *is_valid{
+                let key = &(s.clone(),a);
+                let u = self.nsa.get(key).map_or_else(
+                    || self.c_puct * self.ps[&s][a] * (self.ns[&s] as f32 + EPS).sqrt(), // Q = 0
+                    |&count| self.qsa[key] + self.c_puct * self.ps[&s][a] * (self.ns[&s] as f32).sqrt() / (1.0 + count as f32),
+                );
                 if u > cur_best {
                     cur_best = u;
                     best_act = a as i32;
                 }
             }
         }
+
         let a = best_act as usize;
-        let key = (s.clone(), a);
-        let (next_s, _) = state.get_next_state(a);
+        let (next_s, _) = state.get_next_state(a, true);
         let v = self.search(next_s,deep+1);
-        if self.nsa.contains_key(&key) {
-            self.qsa.insert((s.clone(), a), (self.nsa[&key] as f32 * self.qsa[&key] + v) / (self.nsa[&key] + 1) as f32);
-            self.nsa.insert((s.clone(), a), self.nsa[&key] + 1);
+        let nsa_entry = self.nsa.entry((s.clone(), a)).or_insert(0);
+        *nsa_entry += 1;
+        let qsa_value = if *nsa_entry > 1 {
+            // If the action has been visited before, update the Q value.
+            ((*nsa_entry - 1) as f32 * self.qsa[&(s.clone(), a)] + v) / *nsa_entry as f32
         } else {
-            self.qsa.insert((s.clone(), a), v);
-            self.nsa.insert((s.clone(), a), 1);
-        }
-        self.ns.insert(s.clone(), self.ns[&s] + 1);
+            // If this is the first visit to this action, the Q value is just v.
+            v
+        };
+        self.qsa.insert((s.clone(), a), qsa_value);
+        let ns_entry = self.ns.entry(s.clone()).or_insert(0);
+        *ns_entry += 1;
         -v
     }
 }
