@@ -23,7 +23,7 @@ pub struct Coach {
 
 impl Coach {
     pub fn new(model: AlphaZeroModel, args: &Args) -> Self {
-        let mut examples_handler = ExamplesHandler::new(args.save_dir.clone(), args.max_queue_size);
+        let mut examples_handler = ExamplesHandler::new(args.save_dir.clone(), args.num_iters_for_train_examples_history);
         if args.load_examples {
             examples_handler.load_examples();
         }
