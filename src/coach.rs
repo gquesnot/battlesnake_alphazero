@@ -100,7 +100,7 @@ impl Coach {
             let mcts = MCTS::new(&self.model, self.args.clone());
             let p_mcts = MCTS::new(&self.p_model, self.args.clone());
 
-            let mut arena = Arena::new(mcts, p_mcts);
+            let mut arena = Arena::new(mcts, Some(p_mcts));
             let (n_wins, p_wins, draws) = arena.play_games(self.args.arena_compare);
             println!("NEW/PREV WINS : {} / {} ; DRAWS : {}", n_wins, p_wins, draws);
 

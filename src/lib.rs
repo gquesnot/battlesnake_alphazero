@@ -11,6 +11,7 @@ pub mod arena;
 pub mod utils;
 pub mod canonical_board;
 pub mod examples_handler;
+pub mod normal_mcts;
 
 
 #[derive(Parser, Debug, Clone, Default)]
@@ -63,6 +64,13 @@ pub struct Args {
 
     #[arg(long, default_value_t = 20_usize)]
     pub num_iters_for_train_examples_history: usize,
+
+    #[arg(long)]
+    pub  vs_model_path: Option<String>,
+
+    #[arg(long)]
+    pub vs_normal_mcts: Option<usize>,
+
 }
 
 

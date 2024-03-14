@@ -24,7 +24,8 @@ pub struct MCTS {
     // game termination statuses
     vs: HashMap<String, [bool; 4]>,
     // valid moves
-    args: Args,
+    c_puct: f32,
+    num_mcts_sims: i32,
 }
 
 impl MCTS {
@@ -37,13 +38,14 @@ impl MCTS {
             ps: HashMap::new(),
             es: HashMap::new(),
             vs: HashMap::new(),
-            args,
+            c_puct:args.c_puct,
+            num_mcts_sims: args.num_mcts_sims,
         }
     }
 
     pub fn get_action_prob(&mut self, state: &CanonicalBoard, temp: f32) -> [f32; 4] {
         let current_state = state.reset_and_clone_as_current_player();
-        for _ in 0..self.args.num_mcts_sims {
+        for _ in 0..self.num_mcts_sims {
             self.search(current_state);
         }
         let s = current_state.to_hashmap_string();
@@ -126,9 +128,9 @@ impl MCTS {
             let key = (s.clone(), a as usize);
             if valid_moves[a as usize] {
                 let u: f32 = if self.nsa.contains_key(&key) {
-                    self.qsa[&key] + self.args.c_puct * self.ps[&s][a as usize] * (self.ns[&s] as f32).sqrt() / (1.0 + self.nsa[&key] as f32)
+                    self.qsa[&key] + self.c_puct * self.ps[&s][a as usize] * (self.ns[&s] as f32).sqrt() / (1.0 + self.nsa[&key] as f32)
                 } else {
-                    self.args.c_puct * self.ps[&s][a as usize] * (self.ns[&s] as f32 + EPS).sqrt() // Q = 0 ?
+                    self.c_puct * self.ps[&s][a as usize] * (self.ns[&s] as f32 + EPS).sqrt() // Q = 0 ?
                 };
                 if u > cur_best {
                     cur_best = u;

@@ -75,6 +75,7 @@ impl ExamplesHandler {
         self.examples.push(example);
         self.current_index = Some(new_index);
         self.base_indexes.push(new_index);
+        self.loaded_indexes.push(new_index);
         if self.loaded_indexes.len() > self.max_examples {
             println!("Removing example {}...", self.loaded_indexes[0]);
             self.examples.remove(0);

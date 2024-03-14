@@ -93,7 +93,7 @@ pub fn bench_mcts(c: &mut Criterion) {
     let canonical_board = get_canonical_board();
     let model = AlphaZeroModel::default();
     let mut args = Args::default();
-    args.num_mcts_sims = 25;
+    args.num_mcts_sims = 400;
     let mut mcts = MCTS::new(&model, args);
     c.bench_function("bench_mcts", |b| b.iter(|| {
         mcts.get_action_prob(black_box(&canonical_board), black_box(0.0));
@@ -130,6 +130,6 @@ criterion_group!(
     // bench_flip_horizontal_array_board,
     //  bench_rotate_policy,
     bench_mcts,
-    bench_alphazero_get_action_probs,
+    //bench_alphazero_get_action_probs,
 );
 criterion_main!(benches);
