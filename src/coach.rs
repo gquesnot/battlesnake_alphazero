@@ -85,9 +85,10 @@ impl Coach {
                     .unwrap()
                     .progress_chars("#>-"));
                 let mut sum_episodes_length = 0f32;
-                self.mcts = MCTS::new(&self.model, self.args.c_puct, self.args.num_mcts_sims);
 
                 for _ in 0..self.args.num_episodes {
+                    self.mcts = MCTS::new(&self.model, self.args.c_puct, self.args.num_mcts_sims);
+
                     let temp_examples = self.execute_episode();
                     sum_episodes_length += temp_examples.len() as f32  ;
                     for (k, v) in temp_examples.into_iter(){
