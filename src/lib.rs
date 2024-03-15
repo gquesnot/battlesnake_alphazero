@@ -44,7 +44,7 @@ pub struct Args {
     #[arg(long, default_value_t = 400)]
     pub num_mcts_sims: i32,
 
-    #[arg(long, default_value_t = 40)]
+    #[arg(long, default_value_t = 30)]
     pub arena_compare: i32,
 
     #[arg(long, default_value_t = 4.0_f32)]
