@@ -95,7 +95,7 @@ impl Coach {
                     }
                     pb.inc(1);
                 }
-
+                self.mcts = MCTS::new(&self.model, self.args.c_puct, self.args.num_mcts_sims);
                 pb.finish();
                 println!("AVG EP LENGTH : {:.2}", sum_episodes_length / self.args.num_episodes as f32);
                 self.examples_handler.save_example(train_examples.into_values().flatten().collect_vec());
@@ -111,8 +111,8 @@ impl Coach {
 
             self.model.train(train_examples, self.args.learning_rate, self.args.num_epochs, self.args.batch_size);
 
-            let mcts = MCTS::new(&self.model,  self.args.c_puct, self.args.num_mcts_sims);
-            let p_mcts = MCTS::new(&self.p_model,  self.args.c_puct, self.args.num_mcts_sims);
+            let mcts = MCTS::new(&self.model,  self.args.c_puct, self.args.num_mcts_sims / 2);
+            let p_mcts = MCTS::new(&self.p_model,  self.args.c_puct, self.args.num_mcts_sims / 2);
 
             let mut arena = Arena::new(mcts, Some(p_mcts), self.args.min_health_threshold);
             let (n_wins, p_wins, draws) = arena.play_games(self.args.arena_compare);
