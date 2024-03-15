@@ -79,15 +79,18 @@ impl Coach {
                     .unwrap()
                     .progress_chars("#>-"));
                 let mut sum_episodes_length = 0f32;
+                let mut sum_episodes_max_deep = 0f32;
                 for _ in 0..self.args.num_episodes {
                     self.mcts = MCTS::new(&self.model, self.args.c_puct, self.args.num_mcts_sims);
                     let temp_examples = self.execute_episode();
                     sum_episodes_length += temp_examples.len() as f32  /16f32 ;
+                    sum_episodes_max_deep += self.mcts.max_deep as f32;
                     train_examples.append(temp_examples);
                     pb.inc(1);
                 }
                 pb.finish();
                 println!("AVG MOVE / SNAKE / GAME : {:.2}", sum_episodes_length / self.args.num_episodes as f32);
+                println!("AVG MAX DEEP : {:.2}", sum_episodes_max_deep / self.args.num_episodes as f32);
                 self.examples_handler.save_example(train_examples.deque.into_iter().collect_vec());
             }
 

@@ -39,6 +39,13 @@ pub fn bench_canonical_board_to_array_board(c: &mut Criterion) {
     }));
 }
 
+pub fn bench_canonical_board_to_hashmap_bytes(c: &mut Criterion) {
+    let canonical_board = get_canonical_board(80);
+    c.bench_function("bench_canonical_board_to_hashmap_bytes", |b| b.iter(|| {
+        canonical_board.to_hashmap_bytes();
+    }));
+}
+
 pub fn bench_canonical_board_to_hashmap_string(c: &mut Criterion) {
     let canonical_board = get_canonical_board(80);
     c.bench_function("bench_canonical_board_to_hashmap_string", |b| b.iter(|| {
@@ -85,7 +92,7 @@ pub fn bench_mcts(c: &mut Criterion) {
     let canonical_board = get_canonical_board(80);
     let model = AlphaZeroModel::new(128);
     c.bench_function("bench_mcts", |b| b.iter(|| {
-        let mut mcts = MCTS::new(&model, 4.0, 1000);
+        let mut mcts = MCTS::new(&model, 4.0, 400);
         mcts.get_action_prob(black_box(&canonical_board), black_box(0.0));
     }));
 }
@@ -114,7 +121,8 @@ criterion_group!(
     // bench_canonical_board_to_tensor,
     //  bench_canonical_board_get_next_state,
     //  bench_canonical_board_to_array_board,
-      //bench_canonical_board_to_hashmap_string,
+      bench_canonical_board_to_hashmap_bytes,
+      bench_canonical_board_to_hashmap_string,
     //  bench_canonical_board_mirroring_and_rotation,
      //bench_rotate_array_board,
     //bench_flip_horizontal_array_board,

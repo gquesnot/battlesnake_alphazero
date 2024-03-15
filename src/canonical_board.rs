@@ -1,4 +1,3 @@
-
 use battlesnake_game_types::types::{FoodGettableGame, HeadGettableGame, HealthGettableGame, Move, ReasonableMovesGame, SnakeBodyGettableGame, SnakeId, VictorDeterminableGame};
 use battlesnake_game_types::wire_representation::Position;
 use itertools::Itertools;
@@ -10,6 +9,9 @@ use crate::game;
 use crate::game::{Board, MoveBattleSnake};
 
 pub type AllBoardInfo = (Option<Position>, Option<Vec<Position>>, Option<Position>, Option<Vec<Position>>, Vec<Position>);
+
+pub const  Y_MAPPING:[usize;11] = [0, BOARD_SIZE as usize, (2*BOARD_SIZE) as usize, (3*BOARD_SIZE) as usize, (4*BOARD_SIZE) as usize, (5*BOARD_SIZE) as usize, (6*BOARD_SIZE) as usize, (7*BOARD_SIZE) as usize, (8*BOARD_SIZE) as usize, (9*BOARD_SIZE) as usize, (10*BOARD_SIZE) as usize];
+
 
 pub fn rotate_board(board: &[[f32; 11]; 11], rotation: usize) -> [[f32; 11]; 11] {
     let mut new_board = [[0.0; 11]; 11];
@@ -73,15 +75,14 @@ pub struct CanonicalBoard {
 }
 
 impl CanonicalBoard {
-    pub fn new(board: Board, first_player: i32, prev_action: Option<Move>, health_kill_threshold:u8) -> Self {
+    pub fn new(board: Board, first_player: i32, prev_action: Option<Move>, health_kill_threshold: u8) -> Self {
         CanonicalBoard {
             board,
             first_player,
             prev_action,
-            min_health_threshold: health_kill_threshold
+            min_health_threshold: health_kill_threshold,
         }
     }
-
 
 
     pub fn to_tensor(&self) -> Tensor {
@@ -178,6 +179,39 @@ impl CanonicalBoard {
     }
 
 
+    pub fn to_hashmap_bytes(&self) -> [u8; 121] {
+        let mut result = [0u8; 121];
+        let (self_head, self_body, other_head, other_body, foods) = self.get_info_for_repr();
+
+        if let Some(self_head) = self_head {
+            result[Y_MAPPING[self_head.y as usize] + self_head.x as usize] = 1;
+            if let Some(self_body) = self_body {
+                for body in self_body {
+                    if body != self_head {
+                        result[Y_MAPPING[body.y as usize] + body.x as usize] = 2;
+                    }
+                }
+            }
+        }
+
+        if let Some(other_head) = other_head {
+            result[Y_MAPPING[other_head.y as usize] + other_head.x as usize] = 3;
+            if let Some(other_body) = other_body {
+                for body in other_body {
+                    if body != other_head {
+                        result[Y_MAPPING[body.y as usize] + body.x as usize] = 4;
+                    }
+                }
+            }
+        }
+
+        for food in foods {
+            result[Y_MAPPING[food.y as usize] + food.x as usize] = 5;
+        }
+        result
+    }
+
+
     pub fn to_hashmap_string(&self) -> String {
         let (self_head, self_body, other_head, other_body, foods) = self.get_info_for_repr();
         let board_size = BOARD_SIZE as usize;
@@ -258,14 +292,12 @@ impl CanonicalBoard {
     pub fn get_game_ended(&self, player_id: i32) -> f32 {
         let mut is_over = self.board.is_over();
         let mut winner = self.board.get_winner();
-        if !is_over{
-            let snake_0_is_dead = self.board.get_health(&SnakeId(0))<= self.min_health_threshold;
-            let snake_1_is_dead = self.board.get_health(&SnakeId(1))<= self.min_health_threshold;
-            if snake_0_is_dead || snake_1_is_dead{
+        if !is_over {
+            let snake_0_is_dead = self.board.get_health(&SnakeId(0)) <= self.min_health_threshold;
+            let snake_1_is_dead = self.board.get_health(&SnakeId(1)) <= self.min_health_threshold;
+            if snake_0_is_dead || snake_1_is_dead {
                 is_over = true;
-                winner = if snake_0_is_dead && snake_1_is_dead{ None }
-                else if  snake_0_is_dead { Some(SnakeId(1)) }
-                else { Some(SnakeId(0)) };
+                winner = if snake_0_is_dead && snake_1_is_dead { None } else if snake_0_is_dead { Some(SnakeId(1)) } else { Some(SnakeId(0)) };
             }
         }
         if is_over {
@@ -307,9 +339,9 @@ impl CanonicalBoard {
         (self_head, self_body, other_head, other_body, foods)
     }
 
-    pub fn get_next_state(&self, action: usize, in_mcts:bool) -> (CanonicalBoard, i32) {
+    pub fn get_next_state(&self, action: usize, in_mcts: bool) -> (CanonicalBoard, i32) {
         let action = Move::from_index(action);
-        let next_board = self.play_action(action,in_mcts);
+        let next_board = self.play_action(action, in_mcts);
         let next_player = next_board.get_current_player();
         (next_board, next_player)
     }
@@ -328,7 +360,7 @@ impl CanonicalBoard {
     }
 
 
-    pub fn play_action(&self, action: Move,in_mcts:bool) -> CanonicalBoard {
+    pub fn play_action(&self, action: Move, in_mcts: bool) -> CanonicalBoard {
         if let Some(prev_action) = self.prev_action {
             let actions = if self.first_player == 1 {
                 [prev_action, action]

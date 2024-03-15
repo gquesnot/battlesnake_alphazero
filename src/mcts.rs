@@ -13,17 +13,17 @@ pub struct MCTS {
     // Game should be a trait that your specific game implements
     nnet: AlphaZeroModel,
     // NeuralNet should be a trait for neural network implementations
-    qsa: HashMap<(String, usize), f32>,
+    qsa: HashMap<([u8;121], usize), f32>,
     // stores Q values for (state, action)
-    nsa: HashMap<(String, usize), usize>,
+    nsa: HashMap<([u8;121], usize), usize>,
     // stores visit counts for (state, action)
-    ns: HashMap<String, usize>,
+    ns: HashMap<[u8;121], usize>,
     // stores visit counts for states
-    ps: HashMap<String, [f32; 4]>,
+    ps: HashMap<[u8;121], [f32; 4]>,
     // initial policy from the neural network
-    es: HashMap<String, f32>,
+    es: HashMap<[u8;121], f32>,
     // game termination statuses
-    vs: HashMap<String, [bool; 4]>,
+    vs: HashMap<[u8;121], [bool; 4]>,
     // valid moves
     c_puct: f32,
     num_mcts_sims: i32,
@@ -51,10 +51,10 @@ impl MCTS {
         for _ in 0..self.num_mcts_sims {
             self.search(current_state,0);
         }
-        let s = current_state.to_hashmap_string();
+        let s = current_state.to_hashmap_bytes();
         let mut counts: [usize; 4] = [0; 4];
         for (a, count) in counts.iter_mut().enumerate().take(ACTION_SIZE as usize) {
-            let key = (s.clone(), a);
+            let key = (s, a);
             if self.nsa.contains_key(&key) {
                 *count = self.nsa[&key];
             }
@@ -86,14 +86,13 @@ impl MCTS {
         if self.max_deep < deep{
             self.max_deep = deep;
         }
-        let s = state.to_hashmap_string();
-        let game_ended = self.es.entry(s.clone()).or_insert_with(|| state.get_game_ended(main_player));
+        let s = state.to_hashmap_bytes();
+        let game_ended = self.es.entry(s).or_insert_with(|| state.get_game_ended(main_player));
         if *game_ended != 0.0 {
             return -*game_ended;
         }
 
-        if !self.ps.contains_key(&s) {
-            // leaf node
+        if let std::collections::hash_map::Entry::Vacant(e) = self.ps.entry(s) {
             let (mut p, v) = self.nnet.predict(&state);
             let valid_moves = state.get_valid_moves();
             p.iter_mut().enumerate().for_each(|(i, pi)| {
@@ -128,9 +127,9 @@ impl MCTS {
                     p[i] = noise_ratio * p[i] + (1.0 - noise_ratio) * noise[i];
                 }
             }
-            self.ps.insert(s.clone(), p);
-            self.vs.insert(s.clone(), valid_moves);
-            self.ns.insert(s.clone(), 0);
+            e.insert(p);
+            self.vs.insert(s, valid_moves);
+            self.ns.insert(s, 0);
             return -v;
         }
 
@@ -139,10 +138,9 @@ impl MCTS {
         let mut best_act = -1;
         for (a, is_valid) in valid_moves.iter().enumerate().take(ACTION_SIZE as usize){
             if *is_valid{
-                let key = &(s.clone(),a);
-                let u = self.nsa.get(key).map_or_else(
+                let u = self.nsa.get(&(s,a)).map_or_else(
                     || self.c_puct * self.ps[&s][a] * (self.ns[&s] as f32 + EPS).sqrt(), // Q = 0
-                    |&count| self.qsa[key] + self.c_puct * self.ps[&s][a] * (self.ns[&s] as f32).sqrt() / (1.0 + count as f32),
+                    |&count| self.qsa[&(s,a)] + self.c_puct * self.ps[&s][a] * (self.ns[&s] as f32).sqrt() / (1.0 + count as f32),
                 );
                 if u > cur_best {
                     cur_best = u;
@@ -154,17 +152,17 @@ impl MCTS {
         let a = best_act as usize;
         let (next_s, _) = state.get_next_state(a, true);
         let v = self.search(next_s,deep+1);
-        let nsa_entry = self.nsa.entry((s.clone(), a)).or_insert(0);
+        let nsa_entry = self.nsa.entry((s, a)).or_insert(0);
         *nsa_entry += 1;
         let qsa_value = if *nsa_entry > 1 {
             // If the action has been visited before, update the Q value.
-            ((*nsa_entry - 1) as f32 * self.qsa[&(s.clone(), a)] + v) / *nsa_entry as f32
+            ((*nsa_entry - 1) as f32 * self.qsa[&(s, a)] + v) / *nsa_entry as f32
         } else {
             // If this is the first visit to this action, the Q value is just v.
             v
         };
-        self.qsa.insert((s.clone(), a), qsa_value);
-        let ns_entry = self.ns.entry(s.clone()).or_insert(0);
+        self.qsa.insert((s, a), qsa_value);
+        let ns_entry = self.ns.entry(s).or_insert(0);
         *ns_entry += 1;
         -v
     }
