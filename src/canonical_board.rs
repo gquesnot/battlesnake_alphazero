@@ -124,8 +124,8 @@ impl CanonicalBoard {
     }
 
 
-    pub fn get_mirroring_and_rotation(&self, pi: &[f32; 4]) -> Vec<([[f32; 11]; 11], [f32; 4], i32)> {
-        let mut symmetries: Vec<([[f32; 11]; 11], [f32; 4], i32)> = Vec::new();
+    pub fn get_mirroring_and_rotation(&self, pi: &[f32; 4]) -> Vec<([[f32; 11]; 11], [f32; 4], f32)> {
+        let mut symmetries: Vec<([[f32; 11]; 11], [f32; 4], f32)> = Vec::new();
 
         let rotations = [0, 1, 2, 3]; // Represents 0, 90, 180, and 270 degrees
         let flips_horizontal = [false, true]; // Represents no flip and horizontal flip
@@ -139,7 +139,7 @@ impl CanonicalBoard {
                     new_board = flip_board_horizontal(&new_board);
                 }
                 let new_pi = rotate_policy(pi, rotation, flip_horizontal);
-                symmetries.push((new_board, new_pi, current_player));
+                symmetries.push((new_board, new_pi, current_player as f32));
             }
         }
         symmetries

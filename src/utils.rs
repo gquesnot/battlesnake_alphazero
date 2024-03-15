@@ -8,7 +8,9 @@ pub struct BoundedDeque<T> {
     max_len: usize,
 }
 
+
 impl<T> BoundedDeque<T> {
+    #[allow(dead_code)]
     pub(crate) fn new(max_len: usize) -> BoundedDeque<T> {
         BoundedDeque {
             deque: VecDeque::new(),

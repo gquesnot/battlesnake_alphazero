@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::path::PathBuf;
 
 use indicatif::ProgressStyle;
@@ -10,7 +11,7 @@ use crate::Args;
 use crate::examples_handler::ExamplesHandler;
 use crate::game::{Board, BoardInit, CanCanonical, Sample};
 use crate::mcts::MCTS;
-use crate::utils::{BoundedDeque, choose_index_based_on_probability};
+use crate::utils::{choose_index_based_on_probability};
 
 pub struct Coach {
     model: AlphaZeroModel,
@@ -38,8 +39,8 @@ impl Coach {
         }
     }
 
-    pub fn execute_episode(&mut self) -> Vec<Sample> {
-        let mut train_examples: Vec<([[f32; 11]; 11], [f32; 4], i32)> = Vec::new();
+    pub fn execute_episode(&mut self) -> HashMap<[u8;121],  Vec<Sample>> {
+        let mut train_examples: HashMap<[u8;121],  Vec<Sample>> = HashMap::new();
         let board = Board::init_random_board();
         let mut current_player = 1;
         let mut canonical_board = board.as_canonical(current_player, self.args.min_health_threshold);
@@ -49,18 +50,23 @@ impl Coach {
             let temp = if episode_step < self.args.temp_threshold { 1.0 } else { 0.0 };
             let pi = self.mcts.get_action_prob(&canonical_board, temp);
 
-            train_examples.append(&mut canonical_board.get_mirroring_and_rotation(&pi));
+            let canonical_board_hash = canonical_board.to_hashmap_bytes();
+            train_examples.entry(canonical_board_hash).or_insert_with(|| canonical_board.get_mirroring_and_rotation(&pi));
+
             // chose using the action probabilities of pi
             let action = choose_index_based_on_probability(&pi);
             (canonical_board, current_player) = canonical_board.get_next_state(action,false);
             let value = canonical_board.get_game_ended(current_player);
             if value != 0.0 {
-                return train_examples.into_iter().map(|(s, p, player)| {
-                    let player_v: f32 = if current_player != player { 1.0 } else { 0.0 };
-                    let b_pow: f32 = -1.0;
-                    let player_value = value * b_pow.powf(player_v);
-                    (s, p, player_value)
-                }).collect();
+                train_examples.iter_mut().for_each(|(_, data)| {
+                    data.iter_mut().for_each(|(_, _, player)| {
+                        let player_v: f32 = if current_player as f32 != *player { 1.0 } else { 0.0 };
+                        let b_pow: f32 = -1.0;
+                        let player_value = value * b_pow.powf(player_v);
+                        *player = player_value;
+                    });
+                });
+                return train_examples;
             }
         }
     }
@@ -72,26 +78,28 @@ impl Coach {
             if !self.skip_first_self_play || iteration > 1 {
                 // create a dequeue with max size of num_examples_history
 
-                let mut train_examples: BoundedDeque<Sample> = BoundedDeque::new(self.args.max_queue_size);
+                let mut train_examples: HashMap<[u8;121],  Vec<Sample>> = HashMap::new();
                 let pb = indicatif::ProgressBar::new(self.args.num_episodes as u64);
                 pb.set_style(ProgressStyle::default_bar()
                     .template("[{elapsed_precise}] [{bar:40.cyan/blue}] {pos:>7}/{len:7} ({eta})")
                     .unwrap()
                     .progress_chars("#>-"));
                 let mut sum_episodes_length = 0f32;
-                let mut sum_episodes_max_deep = 0f32;
+                self.mcts = MCTS::new(&self.model, self.args.c_puct, self.args.num_mcts_sims);
+
                 for _ in 0..self.args.num_episodes {
-                    self.mcts = MCTS::new(&self.model, self.args.c_puct, self.args.num_mcts_sims);
                     let temp_examples = self.execute_episode();
-                    sum_episodes_length += temp_examples.len() as f32  /16f32 ;
-                    sum_episodes_max_deep += self.mcts.max_deep as f32;
-                    train_examples.append(temp_examples);
+                    sum_episodes_length += temp_examples.len() as f32  ;
+                    println!();
+                    for (k, v) in temp_examples.into_iter(){
+                        train_examples.entry(k).or_insert(v);
+                    }
                     pb.inc(1);
                 }
+
                 pb.finish();
-                println!("AVG MOVE / SNAKE / GAME : {:.2}", sum_episodes_length / self.args.num_episodes as f32);
-                println!("AVG MAX DEEP : {:.2}", sum_episodes_max_deep / self.args.num_episodes as f32);
-                self.examples_handler.save_example(train_examples.deque.into_iter().collect_vec());
+                println!("AVG EP LENGTH : {:.2}", sum_episodes_length / self.args.num_episodes as f32);
+                self.examples_handler.save_example(train_examples.into_values().flatten().collect_vec());
             }
 
 
