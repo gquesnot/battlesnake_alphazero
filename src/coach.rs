@@ -90,7 +90,6 @@ impl Coach {
                 for _ in 0..self.args.num_episodes {
                     let temp_examples = self.execute_episode();
                     sum_episodes_length += temp_examples.len() as f32  ;
-                    println!();
                     for (k, v) in temp_examples.into_iter(){
                         train_examples.entry(k).or_insert(v);
                     }
