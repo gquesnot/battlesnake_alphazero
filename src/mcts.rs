@@ -116,17 +116,17 @@ impl MCTS {
                 let sum: f32 = p.iter().sum();
                 p.iter_mut().for_each(|pi| *pi /= sum); // renormalize
             }
-            if deep == 0{
-                let alpha = 1.0; // Alpha parameter for Dirichlet distribution
-                let noise_ratio = 0.5; // How much noise to mix in with the original policy
-
-                let dirichlet = Dirichlet::new_with_size(alpha, p.len()).unwrap();
-                let noise = dirichlet.sample(&mut rand::thread_rng());
-
-                for i in 0..p.len() {
-                    p[i] = noise_ratio * p[i] + (1.0 - noise_ratio) * noise[i];
-                }
-            }
+            // if deep == 0{
+            //     let alpha = 1.0; // Alpha parameter for Dirichlet distribution
+            //     let noise_ratio = 0.5; // How much noise to mix in with the original policy
+            //
+            //     let dirichlet = Dirichlet::new_with_size(alpha, p.len()).unwrap();
+            //     let noise = dirichlet.sample(&mut rand::thread_rng());
+            //
+            //     for i in 0..p.len() {
+            //         p[i] = noise_ratio * p[i] + (1.0 - noise_ratio) * noise[i];
+            //     }
+            // }
             e.insert(p);
             self.vs.insert(s, valid_moves);
             self.ns.insert(s, 0);

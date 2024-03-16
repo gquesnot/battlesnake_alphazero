@@ -3,7 +3,7 @@ use std::path::PathBuf;
 use indicatif::ProgressStyle;
 use itertools::{Itertools, multiunzip};
 use ndarray::{arr1, arr2, arr3};
-use tch::{Device, nn, no_grad, Tensor};
+use tch::{autocast, Device, nn, no_grad, Tensor};
 use tch::nn::{Adam, OptimizerConfig};
 
 use crate::canonical_board::CanonicalBoard;
@@ -54,27 +54,32 @@ impl AlphaZeroModel {
 
         let batch_count = samples.len() / batch_size;
 
-
+        let base_device = get_base_device();
         for _ in 0..epochs {
             for i in 0..batch_count {
+                optimizer.zero_grad();
+
                 let ids = rand::seq::index::sample(&mut rand::thread_rng(), samples.len(), batch_size).into_vec();
                 let (boards, pi, value): SampleZipped = multiunzip(ids.iter().map(|&i| samples[i]).collect_vec());
 
-                let mut s = Tensor::try_from(arr3(&boards)).unwrap();
-                let mut target_pis = Tensor::try_from(arr2(&pi)).unwrap();
-                let mut target_vs = Tensor::try_from(arr1(&value)).unwrap();
-                if get_base_device().is_cuda() {
-                    s = s.to_device(get_base_device());
-                    target_pis = target_pis.to_device(get_base_device());
-                    target_vs = target_vs.to_device(get_base_device());
-                }
+                let (s, l_pi, l_v, total_loss) = autocast(true, ||{
+                    let mut s = Tensor::try_from(arr3(&boards)).unwrap();
+                    let mut target_pis = Tensor::try_from(arr2(&pi)).unwrap();
+                    let mut target_vs = Tensor::try_from(arr1(&value)).unwrap();
+                    if base_device.is_cuda() {
+                        s = s.contiguous().to_device(base_device);
+                        target_pis = target_pis.contiguous().to_device(base_device);
+                        target_vs = target_vs.contiguous().to_device(base_device);
+                    }
+                    let (out_pi, out_v) = self.nnet.forward(&s, true);
+                    //println!("Out Pi: {:?}", out_pi.size());
+                    //println!("Out V: {:?}", out_v.size());
+                    let l_pi = self.loss_pi(&target_pis, &out_pi);
+                    let l_v = self.loss_v(&target_vs, &out_v);
+                    let total_loss = l_pi.copy() + l_v.copy();
+                    (s, l_pi, l_v, total_loss)
+                });
 
-                let (out_pi, out_v) = self.nnet.forward(&s, true);
-                //println!("Out Pi: {:?}", out_pi.size());
-                //println!("Out V: {:?}", out_v.size());
-                let l_pi = self.loss_pi(&target_pis, &out_pi);
-                let l_v = self.loss_v(&target_vs, &out_v);
-                let total_loss = l_pi.copy() + l_v.copy();
 
                 let f32_l_pi = f32::try_from(l_pi).unwrap();
                 let f32_l_v = f32::try_from(l_v).unwrap();
@@ -86,7 +91,6 @@ impl AlphaZeroModel {
                     pb.set_message(format!("{}/{} pi_loss: {} v_loss: {}", i, batch_count, pi_losses, v_losses));
                 }
 
-                optimizer.zero_grad();
                 total_loss.backward();
                 optimizer.step();
             }
@@ -97,15 +101,17 @@ impl AlphaZeroModel {
 
 
     pub fn predict(&self, board: &CanonicalBoard) -> ([f32; 4], f32) {
-        let mut tensor_board = board.to_tensor();
-        if get_base_device().is_cuda() {
-            tensor_board = tensor_board.contiguous().to_device(get_base_device());
-        }
+        let device = get_base_device();
+        let  tensor_board = if device.is_cuda() {
+            board.to_tensor().contiguous().to_device(device)
+        }else{
+            board.to_tensor()
+        };
         let (pi, v) = no_grad(|| {
             self.nnet.forward(&tensor_board, false)
         });
-        let pi: Vec<f32> = pi.exp().to_device(Device::Cpu).view(-1).try_into().unwrap();
-        let value: f32 = v.to_device(Device::Cpu).try_into().unwrap();
+        let pi: Vec<f32> = pi.exp().view(-1).try_into().unwrap();
+        let value: f32 = v.try_into().unwrap();
         let mut actions: [f32; 4] = [0.0; 4];
         actions.copy_from_slice(&pi);
         (actions, value)
@@ -113,13 +119,11 @@ impl AlphaZeroModel {
 
 
     pub fn loss_pi(&self, targets: &tch::Tensor, outputs: &tch::Tensor) -> tch::Tensor {
-        let loss = targets * outputs;
-        -loss.sum(tch::Kind::Float) / tch::Tensor::from(targets.size()[0] as f32)
+        -(targets * outputs).sum(tch::Kind::Float) / tch::Tensor::from(targets.size()[0] as f32)
     }
 
     pub fn loss_v(&self, targets: &tch::Tensor, outputs: &tch::Tensor) -> tch::Tensor {
-        let loss = (targets - outputs.view(-1)).pow(&tch::Tensor::from(2.0));
-        loss.sum(tch::Kind::Float) / tch::Tensor::from(targets.size()[0] as f32)
+        (targets - outputs.view(-1)).pow(&tch::Tensor::from(2.0)).sum(tch::Kind::Float) / tch::Tensor::from(targets.size()[0] as f32)
     }
 
 

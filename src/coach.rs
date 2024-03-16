@@ -106,8 +106,8 @@ impl Coach {
             let mut train_examples = self.examples_handler.examples.clone().into_iter().flatten().collect::<Vec<Sample>>();
             train_examples.shuffle(&mut rand::thread_rng());
 
-            self.model.save_checkpoint(&PathBuf::from(&self.args.save_dir).join("temp.pth.tar"))?;
-            self.p_model.load_checkpoint(&PathBuf::from(&self.args.save_dir).join("temp.pth.tar"))?;
+            self.model.save_checkpoint(&PathBuf::from(&self.args.save_dir).join("temp.safetensors"))?;
+            self.p_model.load_checkpoint(&PathBuf::from(&self.args.save_dir).join("temp.safetensors"))?;
 
 
             self.model.train(train_examples, self.args.learning_rate, self.args.num_epochs, self.args.batch_size);
@@ -121,17 +121,17 @@ impl Coach {
 
             if p_wins + n_wins == 0 || (n_wins as f32 / (p_wins + n_wins) as f32) < self.args.update_threshold {
                 println!("REJECTING NEW MODEL");
-                self.model.load_checkpoint(&PathBuf::from(&self.args.save_dir).join("temp.pth.tar"))?;
+                self.model.load_checkpoint(&PathBuf::from(&self.args.save_dir).join("temp.safetensors"))?;
             } else {
                 println!("ACCEPTING NEW MODEL");
                 self.model.save_checkpoint(&PathBuf::from(&self.args.save_dir).join(self.get_checkpoint_file(iteration)))?;
-                self.model.save_checkpoint(&PathBuf::from(&self.args.save_dir).join("best.pth.tar"))?;
+                self.model.save_checkpoint(&PathBuf::from(&self.args.save_dir).join("best.safetensors"))?;
             }
         }
         Ok(())
     }
 
     pub fn get_checkpoint_file(&self, iteration: i32) -> String {
-        format!("checkpoint_{}.pth.tar", iteration).to_string()
+        format!("checkpoint_{}.safetensors", iteration).to_string()
     }
 }

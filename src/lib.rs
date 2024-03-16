@@ -38,7 +38,7 @@ pub struct Args {
     #[arg(long, default_value_t = 15)]
     pub temp_threshold: i32,
 
-    #[arg(long, default_value_t = 0.6_f32)]
+    #[arg(long, default_value_t = 0.55_f32)]
     pub update_threshold: f32,
 
     #[arg(long, default_value_t = 400)]
@@ -78,7 +78,7 @@ pub struct Args {
     // 100 - 80 => 3food/20round
     // 100 - 75 => 3.75food/20round
     // 100 - 70 => 4.5food/20round
-    #[arg(long, default_value_t = 80)]
+    #[arg(long, default_value_t = 75)]
     pub min_health_threshold: u8,
 
 }

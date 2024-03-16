@@ -34,15 +34,13 @@ pub fn print_board(board: &[[f32; 11]; 11]) {
 fn main() {
     let args = Args::parse();
     let mut model = AlphaZeroModel::new(args.num_channels);
-
-
     let save_dir = PathBuf::from(&args.save_dir);
     if !save_dir.exists() {
         std::fs::create_dir_all(&save_dir).unwrap();
     }
 
     if args.load_model {
-        let path = PathBuf::from(&args.save_dir).join("best.pth.tar");
+        let path = PathBuf::from(&args.save_dir).join("best.safetensors");
         if path.exists() {
             println!("load model from {}", path.display());
             model.load_checkpoint(&path).unwrap();
